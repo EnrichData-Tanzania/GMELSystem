@@ -801,8 +801,9 @@
       const defaultVal = { general: 0, male: 0, female: 0, total: 0 };
       if (!ind) return defaultVal;
 
+      // Fallback safety check for legacy or uninitialized mappings
       const mapping = ind.mapping || {
-        generalFieldId: ind.mappedFieldId,
+        generalFieldId: ind.mappedFieldId || null,
         maleFieldId: null,
         femaleFieldId: null
       };
@@ -839,6 +840,7 @@
         total: calculatedTotal
       };
     }
+    
     function exportCSV(dataArray, filename) {
       if (!dataArray || dataArray.length === 0) {
         alert('No data available to export.');
