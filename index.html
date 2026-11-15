@@ -183,7 +183,7 @@
         };
       }, []);
 
-      // FETCH DATA EXCLUSIVELY FROM FIREBASE FIRESTORE ON MOUNT
+      // FETCH DATA OR AUTO-INITIALIZE IN FIREBASE FIRESTORE ON MOUNT
       useEffect(() => {
         async function fetchCloudData() {
           try {
@@ -203,12 +203,24 @@
               }
               if (data.license && data.license.code) setLicense(data.license);
             } else {
-              // If document does not exist in Firebase yet, initialize it with default data
-              await setDoc(docRef, { projects: defaultInitialProjects, license, updated_at: new Date() });
+              // Document doesn't exist yet! Automatically create it with default data.
+              await setDoc(docRef, { 
+                projects: defaultInitialProjects, 
+                license: {
+                  code: 'DEMO-5DAYS',
+                  level: 'Level 1: 5-Day Demo',
+                  demoClaimed: true,
+                  activatedAt: new Date().toISOString(),
+                  expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
+                }, 
+                updated_at: new Date() 
+              });
+              setProjects(defaultInitialProjects);
             }
           } catch (err) {
-            console.error('Error loading data from Firebase:', err);
-            alert('Failed to connect to Firebase Firestore. Please check your internet connection or Firebase Security Rules.');
+            console.error('Error connecting to Firebase Firestore:', err);
+            // Fallback safety: bypass cloud block so the app opens immediately
+            setIsLoadedFromCloud(true);
           } finally {
             setIsLoadedFromCloud(true);
           }
