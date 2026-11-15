@@ -1833,7 +1833,7 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
       );
     }
 
-   function ExportSuiteView({ project, onExportSubmissions }) {
+   function ExportSuiteView({ project, onExportSubmissions, setProjects }) {
       const handleExportLogframe = () => {
         if (!project.indicators || project.indicators.length === 0) {
           alert('No indicators available in the Logframe to export.');
@@ -1864,11 +1864,150 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
         exportCSV(project.expenses, `${project.code}_budget_expenses.csv`);
       };
 
+      // AUTOMATED DONOR PDF REPORT GENERATOR
+      const handleGenerateDonorPDF = () => {
+        const totalExpenses = (project.expenses || []).reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
+        const rawBudgetNum = parseFloat(String(project.budget || '0').replace(/[^0-9.]/g, '')) || 1;
+        const utilization = Math.min(100, Math.round((totalExpenses / rawBudgetNum) * 100));
+
+        const reportWindow = window.open('', '_blank', 'width=950,height=800');
+        if (!reportWindow) {
+          alert('Please allow pop-ups in your browser to generate the automated PDF report.');
+          return;
+        }
+
+        const indicatorRows = (project.indicators || []).map(ind => {
+          const actual = typeof getCalculatedActual === 'function' ? getCalculatedActual(project, ind) : (ind.baseline || { general: 0, male: 0, female: 0, total: 0 });
+          const targetTotal = ind.target?.total || ind.target?.general || 1;
+          const actualTotal = actual.total || actual.general || 0;
+          const pct = Math.min(100, Math.max(0, Math.round((actualTotal / targetTotal) * 100)));
+          return `
+            <tr>
+              <td><strong>${ind.level}</strong></td>
+              <td>${ind.title}</td>
+              <td style="text-align:center;">${ind.baseline?.general || 0} / ${ind.baseline?.male || 0} / ${ind.baseline?.female || 0} / <strong>${ind.baseline?.total || 0}</strong></td>
+              <td style="text-align:center;">${ind.target?.general || 0} / ${ind.target?.male || 0} / ${ind.target?.female || 0} / <strong>${ind.target?.total || 0}</strong></td>
+              <td style="text-align:center;color:#312e81;">${actual.general || 0} / ${actual.male || 0} / ${actual.female || 0} / <strong>${actualTotal}</strong></td>
+              <td style="text-align:center;font-weight:bold;">${pct}%</td>
+            </tr>
+          `;
+        }).join('');
+
+        const expenseRows = (project.expenses || []).map(exp => `
+          <tr>
+            <td>${exp.date || '-'}</td>
+            <td>${exp.title}</td>
+            <td style="text-align:right;font-family:monospace;">$${Number(exp.amount || 0).toLocaleString()}</td>
+          </tr>
+        `).join('');
+
+        reportWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Donor M&E Report - ${project.name}</title>
+            <style>
+              body { font-family: system-ui, -apple-system, sans-serif; color: #0f172a; padding: 36px; line-height: 1.5; }
+              .header { border-bottom: 3px solid #4f46e5; padding-bottom: 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-end; }
+              .header h1 { margin: 0; font-size: 22px; text-transform: uppercase; letter-spacing: 0.5px; }
+              .header p { margin: 4px 0 0; color: #4f46e5; font-weight: 700; font-size: 16px; }
+              .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+              .meta-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; }
+              .meta-card span { font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700; display: block; }
+              .meta-card strong { font-size: 16px; margin-top: 4px; display: block; }
+              h2 { font-size: 15px; text-transform: uppercase; color: #1e293b; border-bottom: 1px solid #cbd5e1; padding-bottom: 6px; margin-top: 24px; }
+              table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+              th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; }
+              th { background: #f1f5f9; font-weight: 700; }
+              .footer { margin-top: 36px; border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 11px; color: #64748b; display: flex; justify-content: space-between; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <div>
+                <h1>Donor Monitoring, Evaluation & Learning Report</h1>
+                <p>${project.name} (${project.code})</p>
+              </div>
+              <div style="text-align:right;font-size:12px;">
+                <strong>Generated:</strong> ${new Date().toLocaleDateString()}<br/>
+                <strong>Status:</strong> Official Donor Submission
+              </div>
+            </div>
+
+            <div class="meta-grid">
+              <div class="meta-card"><span>Donor / Partner</span><strong>${project.donor || 'N/A'}</strong></div>
+              <div class="meta-card"><span>Location</span><strong>${project.location || 'N/A'}</strong></div>
+              <div class="meta-card"><span>Budget Utilization</span><strong>$${totalExpenses.toLocaleString()} / ${project.budget} (${utilization}%)</strong></div>
+              <div class="meta-card"><span>Field Records</span><strong>${project.submissions?.length || 0} Submissions</strong></div>
+            </div>
+
+            <h2>1. Disaggregated Logframe Performance (Gen / M / F / Total)</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Level</th>
+                  <th>Indicator Statement</th>
+                  <th style="text-align:center;">Baseline</th>
+                  <th style="text-align:center;">Target</th>
+                  <th style="text-align:center;">Actual</th>
+                  <th style="text-align:center;">Progress</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${indicatorRows || '<tr><td colspan="6" style="text-align:center;">No indicators recorded.</td></tr>'}
+              </tbody>
+            </table>
+
+            <h2>2. Financial Expenditure Summary</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Expense Description</th>
+                  <th style="text-align:right;">Amount (USD)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${expenseRows || '<tr><td colspan="3" style="text-align:center;">No expenses recorded.</td></tr>'}
+              </tbody>
+            </table>
+
+            <div class="footer">
+              <span>Generated by GMEL System Enterprise Platform</span>
+              <span>Verified Project Record · ${project.code}</span>
+            </div>
+            <script>
+              window.onload = function() { window.print(); };
+            <\/script>
+          </body>
+          </html>
+        `);
+        reportWindow.document.close();
+      };
+
+      // FULL JSON BACKUP DOWNLOAD
+      const handleDownloadBackup = () => {
+        const backupPayload = {
+          exportedAt: new Date().toISOString(),
+          system: 'GMEL System',
+          project
+        };
+        const blob = new Blob([JSON.stringify(backupPayload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${project.code}_GMEL_Backup_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      };
+
       return (
         <div className="space-y-6 text-base">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <h2 className="text-2xl font-black text-slate-900">GMEL Data Export Suite</h2>
-            <p className="text-base text-slate-600 mt-1">Export raw data, disaggregated logframes, and financial reports for {project.name}.</p>
+            <p className="text-base text-slate-600 mt-1">Export raw data, disaggregated logframes, donor PDF reports, and full backups for {project.name}.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1922,11 +2061,44 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
                 <Download className="h-5 w-5" /> Export Expenses ({project.expenses?.length || 0})
               </button>
             </div>
+
+            {/* AUTOMATED DONOR PDF REPORT CARD */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between space-y-4">
+              <div className="space-y-2">
+                <div className="bg-rose-50 text-rose-600 p-3 rounded-xl w-fit border border-rose-100">
+                  <FileText className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-extrabold text-slate-900">Automated Donor PDF Report</h3>
+                <p className="text-sm text-slate-600">Auto-compile an executive donor report with disaggregated logframe progress and expenditure tables.</p>
+              </div>
+              <button 
+                onClick={handleGenerateDonorPDF} 
+                className="w-full bg-rose-600 hover:bg-rose-700 text-white font-extrabold py-3 rounded-xl flex items-center justify-center gap-2 shadow transition"
+              >
+                <Printer className="h-5 w-5" /> Generate Donor PDF
+              </button>
+            </div>
+
+            {/* FULL PROJECT JSON BACKUP CARD */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between space-y-4 md:col-span-2">
+              <div className="space-y-2">
+                <div className="bg-slate-100 text-slate-700 p-3 rounded-xl w-fit border border-slate-200">
+                  <Shield className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-extrabold text-slate-900">Full Project System Backup (.JSON)</h3>
+                <p className="text-sm text-slate-600">Download a complete offline archive containing all indicators, custom forms, skip logic rules, submissions, and financial records for disaster recovery.</p>
+              </div>
+              <button 
+                onClick={handleDownloadBackup} 
+                className="w-full bg-slate-800 hover:bg-slate-900 text-white font-extrabold py-3 rounded-xl flex items-center justify-center gap-2 shadow transition"
+              >
+                <Download className="h-5 w-5" /> Download Full Project Backup
+              </button>
+            </div>
           </div>
         </div>
       );
     }
-
     function MobileSyncView({ project, isOnline }) {
       return (
         <div className="max-w-3xl mx-auto space-y-6 text-base">
