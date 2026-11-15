@@ -917,24 +917,181 @@
     }
 
     function UserGuidelinesView() {
+      const modules = [
+        {
+          num: '01',
+          title: 'Workspace Access, User Roles & Security PINs',
+          badge: 'Governance & RBAC',
+          summary: 'Control who can configure projects, design forms, or collect field data using role-based access control.',
+          steps: [
+            'Use the Role Selector in the top navigation bar to switch between Administrator, M&E Officer, and Enumerator.',
+            'Administrator & M&E Officer Access: Protected by a security PIN (default: GMEL2026!) to prevent unauthorized edits to indicators, budgets, or forms.',
+            'Enumerator Mode: Locks the workspace to field data collection and cloud synchronization, ideal for tablets and mobile phones in the field.'
+          ]
+        },
+        {
+          num: '02',
+          title: 'Multi-Project Management & Budget Utilization',
+          badge: 'Project Setup',
+          summary: 'Manage multiple donor-funded programs independently from a single cloud workspace.',
+          steps: [
+            'Click "+ New Project" (Admin only) in the top header to register a project name, unique project code, donor partner, total budget, and target region.',
+            'Switch active workspaces anytime using the "Project:" dropdown selector in the header; all dashboards, forms, and maps automatically filter to the selected project.',
+            'Track expenditure in real time on the Dashboard & Visuals tab by clicking "+ Add Expense" inside the Budget Utilization panel.'
+          ]
+        },
+        {
+          num: '03',
+          title: 'Logical Framework (Logframe) & Auto-Calculation Formulas',
+          badge: 'M&E Matrix',
+          summary: 'Configure disaggregated indicators and link them directly to live field survey responses.',
+          steps: [
+            'Navigate to Logframe Matrix and click "+ Add Indicator" to define Impact, Outcome, Output, or Activity indicators with General, Male, and Female baselines and targets.',
+            'Link an indicator to any published Form Question using the "Source Form & Formula Mapping" dropdown.',
+            'Select an aggregation rule (SUM, COUNT, AVERAGE, or PERCENTAGE) so actual progress updates automatically whenever enumerators submit new records.'
+          ]
+        },
+        {
+          num: '04',
+          title: 'Advanced Form Builder & Conditional Skip Logic',
+          badge: 'Questionnaire Design',
+          summary: 'Build custom mobile-ready surveys without coding.',
+          steps: [
+            'Open Form Builder, enter a Form Title and Description, and add questions across 9 supported types: Short Text, Long Text, Numeric, Dropdown, Multi-Select, Date, GPS Location, Rating (1–5), and Yes/No.',
+            'For Dropdown and Multi-Select fields, enter comma-separated choices (e.g., Functional, Broken Down).',
+            'Add conditional routing instructions in the "Skip Logic Trigger" field (e.g., "If Answer == No, skip to Q5") and click "Publish Form to Firebase".'
+          ]
+        },
+        {
+          num: '05',
+          title: 'Field Data Collection & Geospatial GIS Mapping',
+          badge: 'Field Operations',
+          summary: 'Capture structured field data and visualize geographic coverage automatically.',
+          steps: [
+            'Open Data Submission, select the target survey form, fill in the respondent details, and click "Submit Record to Firebase".',
+            'When GPS coordinates (latitude, longitude) are recorded in submissions, open GIS Map View to inspect interactive pins with timestamps and submission IDs.',
+            'For offline paper collection in remote areas without devices, open Print Forms to generate a formatted paper questionnaire with enumerator sign-off blocks.'
+          ]
+        },
+        {
+          num: '06',
+          title: 'Custom Scorecards, Donor PDF Reports & Data Exports',
+          badge: 'Reporting & Audits',
+          summary: 'Generate audit-ready reports and raw datasets for donors and stakeholders.',
+          steps: [
+            'Custom Reports: View side-by-side status bars comparing Actual vs. Target Progress and Improvement from Baseline, then click "Print PDF Report".',
+            'Export Suite: Download raw Field Submissions CSV, disaggregated Logframe Matrix CSV, or Financial Expense Logs CSV.',
+            'Use "Generate Donor PDF" for an automated executive summary or "Download Full Project Backup" to save a complete .JSON disaster-recovery archive.'
+          ]
+        },
+        {
+          num: '07',
+          title: 'Firebase Cloud Synchronization & Offline Resilience',
+          badge: 'Cloud Sync',
+          summary: 'Keep field teams and headquarters synchronized in real time.',
+          steps: [
+            'Check the connection badge in the top bar ("Firebase Connected" vs. "Offline") to verify live database status.',
+            'Click "Sync" in the top navigation bar to open the Firebase Cloud Status Hub, inspect record counts, and trigger a manual cloud backup anytime.'
+          ]
+        },
+        {
+          num: '08',
+          title: 'Subscription Tiers, License Activation & Technical Support',
+          badge: 'Licensing',
+          summary: 'Manage your organization’s subscription and renewal keys.',
+          steps: [
+            'New workspaces automatically begin with a full-featured 5-Day Trial Demo (Level 1).',
+            'Open the License tab to view remaining days, enter a Standard Annual (GMEL-STD-...) or Enterprise Multi-Year (GMEL-ENT-...) activation key, or request a key directly from EnrichData Tanzania.',
+            'For onboarding assistance or custom enterprise keys, contact info.enrichdata@gmail.com or call +255 758 216 364.'
+          ]
+        }
+      ];
+
       return (
-        <div className="max-w-4xl mx-auto space-y-6 text-base">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center print:hidden">
+        <div className="max-w-5xl mx-auto space-y-6 text-base">
+          {/* TOP ACTION BAR */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden">
             <div>
-              <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2.5">
-                System User Guidelines &amp; Documentation
-              </h2>
-              <p className="text-base text-slate-600 mt-1">Official operational manual for the GMEL System.</p>
+              <h2 className="text-2xl font-black text-slate-900">System User Guidelines &amp; Documentation</h2>
+              <p className="text-base text-slate-600 mt-1">Complete feature-by-feature operational manual for the GMEL System.</p>
             </div>
-            <button type="button" onClick={() => window.print()} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow hover:bg-slate-800">
-              Print Guide
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="bg-slate-900 hover:bg-slate-800 text-white px-5 py-3 rounded-xl font-extrabold text-sm shadow flex items-center gap-2 transition shrink-0"
+            >
+              <Printer className="h-5 w-5" /> Print / Save Manual (PDF)
             </button>
           </div>
 
-          <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 space-y-8 text-slate-800 text-base leading-relaxed">
-            <div className="border-b pb-6">
-              <h1 className="text-3xl font-black text-slate-900">Gabriel Monitoring, Evaluation and Learning (GMEL) System Manual</h1>
-              <p className="text-indigo-600 text-sm font-extrabold mt-1">Founder &amp; Lead Architect: Gabriel Godiel Mashambo &middot; EnrichData Tanzania</p>
+          {/* PRINTABLE MANUAL DOCUMENT */}
+          <div className="bg-white p-6 sm:p-10 rounded-3xl shadow-sm border border-slate-200 space-y-8 text-slate-800 leading-relaxed print:shadow-none print:border-none print:p-0">
+            {/* MANUAL HEADER */}
+            <div className="border-b-2 border-slate-900 pb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+              <div>
+                <span className="text-xs font-extrabold uppercase tracking-widest text-indigo-600 block mb-1">
+                  Official Customer Onboarding &amp; Standard Operating Procedures
+                </span>
+                <h1 className="text-2xl sm:text-3xl font-black text-slate-900">
+                  Gabriel Monitoring, Evaluation and Learning (GMEL) System Manual
+                </h1>
+                <p className="text-indigo-700 text-sm font-extrabold mt-2">
+                  Founder &amp; Lead Architect: Gabriel Godiel Mashambo &middot; EnrichData Tanzania
+                </p>
+              </div>
+              <div className="text-xs font-mono bg-slate-100 px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 shrink-0">
+                <div><strong>Release:</strong> Enterprise v2026</div>
+                <div><strong>Support:</strong> +255 758 216 364</div>
+              </div>
+            </div>
+
+            {/* QUICK WORKFLOW OVERVIEW BANNER */}
+            <div className="bg-indigo-50/80 border border-indigo-200 rounded-2xl p-5 space-y-2">
+              <h3 className="text-sm font-black uppercase tracking-wide text-indigo-950">Recommended End-to-End M&amp;E Workflow</h3>
+              <p className="text-sm text-indigo-900 font-semibold">
+                1. Create Project &amp; Budget &rarr; 2. Define Logframe Indicators &rarr; 3. Build &amp; Publish Survey Forms &rarr; 4. Map Form Fields to Indicators &rarr; 5. Collect Field &amp; GPS Data &rarr; 6. Generate Donor Scorecards &amp; Exports.
+              </p>
+            </div>
+
+            {/* FEATURE-BY-FEATURE MODULES */}
+            <div className="grid grid-cols-1 gap-6">
+              {modules.map((mod) => (
+                <div key={mod.num} className="p-6 rounded-2xl bg-slate-50/70 border border-slate-200 space-y-3 break-inside-avoid">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
+                    <div className="flex items-center gap-3">
+                      <span className="bg-indigo-600 text-white font-mono font-black text-sm px-3 py-1 rounded-lg">
+                        {mod.num}
+                      </span>
+                      <h3 className="text-lg font-black text-slate-900">{mod.title}</h3>
+                    </div>
+                    <span className="text-xs font-extrabold uppercase tracking-wider bg-white text-slate-700 px-3 py-1 rounded-lg border border-slate-300">
+                      {mod.badge}
+                    </span>
+                  </div>
+
+                  <p className="text-sm font-bold text-slate-700">{mod.summary}</p>
+
+                  <ul className="space-y-2 pt-1">
+                    {mod.steps.map((step, idx) => (
+                      <li key={idx} className="flex items-start gap-2.5 text-sm text-slate-700">
+                        <span className="text-indigo-600 font-black mt-0.5">&bull;</span>
+                        <span>{step}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+
+            {/* FOOTER & HELP DESK */}
+            <div className="border-t-2 border-slate-200 pt-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs text-slate-600 font-bold">
+              <div>
+                <p className="text-slate-900 font-extrabold">EnrichData Tanzania &mdash; GMEL Enterprise Support Desk</p>
+                <p>Email: info.enrichdata@gmail.com &middot; Mobile / WhatsApp: +255 758 216 364</p>
+              </div>
+              <span className="font-mono bg-slate-100 px-3 py-1.5 rounded-lg border">
+                &copy; 2026 GMEL System. All Rights Reserved.
+              </span>
             </div>
           </div>
         </div>
