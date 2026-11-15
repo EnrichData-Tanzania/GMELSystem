@@ -1240,10 +1240,6 @@
             <input type="text" placeholder="Form Name" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} className="w-full border rounded-xl p-3 font-bold" />
             <button onClick={handleSaveForm} className="bg-emerald-600 text-white font-extrabold px-6 py-3 rounded-xl">Publish Form</button>
           </div>
-        </div>
-      );
-    }
-    {/* NEW DASHBOARD SUBMISSION CHART */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
             <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2 border-b pb-3">
               <BarChart3 className="h-6 w-6 text-indigo-600" /> Monthly Field Data Submissions Trend (2026)
@@ -1271,7 +1267,10 @@
               })}
             </div>
           </div>
-
+        </div>
+      );
+    }
+              
     function DataEntryView({ project, onSubmitForm, onDeleteSubmission, onClearAllSubmissions }) {
       const [selectedFormId, setSelectedFormId] = useState(project.forms[0]?.id || '');
       const [formData, setFormData] = useState({});
