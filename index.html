@@ -223,7 +223,7 @@
         async function saveCloudData() {
           try {
             const docRef = doc(db, 'gmel_systems', 'main_workspace');
-            await setDoc(docRef, { projects, license, updated_at: new Date() });
+            await setDoc(docRef, { projects, license, updated_at: new Date() }, { merge: true });
           } catch (err) {
             console.error('Error saving to Firebase:', err);
           }
