@@ -1352,16 +1352,89 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
       );
     }
     function CustomReportsView({ project, getCalculatedActual }) {
+      const totalExpenses = (project.expenses || []).reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
+      const rawBudgetNum = parseFloat(String(project.budget || '0').replace(/[^0-9.]/g, '')) || 1;
+      const budgetUtilization = Math.min(100, Math.round((totalExpenses / rawBudgetNum) * 100));
+
+      // Calculate overall project indicator performance
+      let totalPctSum = 0;
+      const indicatorSummaries = project.indicators.map(ind => {
+        const actual = getCalculatedActual(project, ind);
+        const targetObj = ind.target || { general: 0, male: 0, female: 0, total: 1 };
+        const targetVal = targetObj.total || targetObj.general || 1;
+        const actualVal = actual.total || actual.general || 0;
+        const pct = Math.min(100, Math.max(0, Math.round((actualVal / targetVal) * 100)));
+        totalPctSum += pct;
+        return { ...ind, actual, targetVal, actualVal, pct };
+      });
+      const avgPerformance = project.indicators.length > 0 ? Math.round(totalPctSum / project.indicators.length) : 0;
+
       return (
         <div className="space-y-6 text-base">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center print:hidden">
             <div>
               <h2 className="text-2xl font-black text-slate-900">Custom Reports &amp; Scorecard</h2>
-              <p className="text-base text-slate-600 mt-1">Donor-ready summary report for {project.name}.</p>
+              <p className="text-base text-slate-600 mt-1">Live donor-ready performance report fetched dynamically from project data.</p>
             </div>
             <button onClick={() => window.print()} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 shadow hover:bg-indigo-700">
               <FileDown className="h-5 w-5" /> Print PDF Report
             </button>
+          </div>
+
+          <div className="bg-white p-8 rounded-2xl shadow border space-y-6">
+            <div className="border-b pb-4 flex justify-between items-start">
+              <div>
+                <h1 className="text-2xl font-black text-slate-900">M&amp;E PERFORMANCE REPORT &amp; SCORECARD</h1>
+                <p className="text-indigo-600 font-extrabold text-lg mt-1">{project.name} ({project.code})</p>
+              </div>
+              <div className="text-right">
+                <span className="bg-slate-100 px-4 py-2 rounded-xl font-mono text-xs border font-bold block">Generated: 2026</span>
+                <span className="text-xs text-emerald-700 font-extrabold mt-1 block">Overall Performance: {avgPerformance}%</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="p-4 bg-slate-50 rounded-xl border">
+                <span className="text-xs uppercase font-extrabold text-slate-500">Donor Partner</span>
+                <p className="text-lg font-black text-slate-900 mt-1">{project.donor || 'N/A'}</p>
+              </div>
+              <div className="p-4 bg-slate-50 rounded-xl border">
+                <span className="text-xs uppercase font-extrabold text-slate-500">Budget / Utilization</span>
+                <p className="text-lg font-black text-slate-900 mt-1">{project.budget} <span className="text-xs font-mono text-emerald-700">({budgetUtilization}%)</span></p>
+              </div>
+              <div className="p-4 bg-slate-50 rounded-xl border">
+                <span className="text-xs uppercase font-extrabold text-slate-500">Location</span>
+                <p className="text-lg font-black text-slate-900 mt-1">{project.location || 'N/A'}</p>
+              </div>
+              <div className="p-4 bg-slate-50 rounded-xl border">
+                <span className="text-xs uppercase font-extrabold text-slate-500">Total Submissions</span>
+                <p className="text-lg font-black text-indigo-700 mt-1">{project.submissions.length} Records</p>
+              </div>
+            </div>
+
+            <h3 className="text-lg font-black text-slate-900 pt-4 border-t">Disaggregated Indicator Progress</h3>
+            <div className="space-y-4">
+              {indicatorSummaries.map(ind => (
+                <div key={ind.id} className="p-4 bg-slate-50 rounded-xl border space-y-2">
+                  <div className="flex justify-between items-start font-bold">
+                    <div>
+                      <span className="px-2 py-0.5 rounded text-xs bg-indigo-100 text-indigo-800 font-extrabold mr-2">{ind.level}</span>
+                      <span className="text-slate-900">{ind.title}</span>
+                    </div>
+                    <span className="text-indigo-900 font-mono font-black">{ind.actualVal} / {ind.targetVal} {ind.unit} ({ind.pct}%)</span>
+                  </div>
+                  <div className="text-xs text-slate-600 font-mono font-bold flex gap-6 pt-1 border-t border-slate-200">
+                    <span>Baseline (Gen/M/F/Tot): {ind.baseline.general} / {ind.baseline.male} / {ind.baseline.female} / {ind.baseline.total}</span>
+                    <span className="text-indigo-700">Actual Achieved (Gen/M/F/Tot): {ind.actual.general} / {ind.actual.male} / {ind.actual.female} / {ind.actual.total}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-4 border-t text-xs text-slate-500 flex justify-between">
+              <span>GMEL System Enterprise Monitoring Platform</span>
+              <span>Confidential &amp; Donor Verified</span>
+            </div>
           </div>
         </div>
       );
