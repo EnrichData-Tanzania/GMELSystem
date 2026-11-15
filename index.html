@@ -154,32 +154,54 @@
     ];
 
     function App() {
-      // 1. Declare these states at the top of your App component
       const [projects, setProjects] = useState([]);
-      const [license, setLicense] = useState(null);
+      const [activeProjectId, setActiveProjectId] = useState('proj-1');
+      const [activeTab, setActiveTab] = useState('dashboard');
+      const [userRole, setUserRole] = useState('Administrator');
+      const [license, setLicense] = useState({
+        code: 'DEMO-5DAYS',
+        level: 'Level 1: 5-Day Demo',
+        demoClaimed: true,
+        activatedAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
+      });
+      const [isLoadedFromCloud, setIsLoadedFromCloud] = useState(false);
+      const [isOnline, setIsOnline] = useState(navigator.onLine);
+      const [installPrompt, setInstallPrompt] = useState(null);
+      const [showMobileMenu, setShowMobileMenu] = useState(false);
       const [isSyncing, setIsSyncing] = useState(false);
       const [lastSynced, setLastSynced] = useState('Just now');
 
-      // 2. PARENT/MAIN SYNC FUNCTION GOES HERE
+      useEffect(() => {
+        const handleOnline = () => setIsOnline(true);
+        const handleOffline = () => setIsOnline(false);
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+        return () => {
+          window.removeEventListener('online', handleOnline);
+          window.removeEventListener('offline', handleOffline);
+        };
+      }, []);
+
       const handleManualSync = async () => {
         if (isSyncing) return;
         setIsSyncing(true);
 
         try {
-          // Backup workspace states locally and to cloud
-          if (typeof projects !== 'undefined' && Array.isArray(projects)) {
+          if (Array.isArray(projects)) {
             localStorage.setItem('gmel_projects_v2', JSON.stringify(projects));
           }
-          if (typeof license !== 'undefined' && license) {
+          if (license) {
             localStorage.setItem('gmel_license_v2', JSON.stringify(license));
           }
 
-          // Simulate or execute cloud connection to Firebase Firestore
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          if (db) {
+            const docRef = doc(db, 'gmel_systems', 'main_workspace');
+            await setDoc(docRef, { projects, license, updated_at: new Date() }, { merge: true });
+          }
 
           const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           setLastSynced(timeString);
-          
           alert('Cloud Synchronization Successful: All project submissions, indicators, forms, and licenses are securely synced!');
         } catch (err) {
           console.error('Synchronization error:', err);
@@ -189,9 +211,7 @@
         }
       };
 
-      // ... rest of your App component (return statement with views)
-    }
-      // FETCH DATA OR AUTO-INITIALIZE IN FIREBASE FIRESTORE ON MOUNT
+     // FETCH DATA OR AUTO-INITIALIZE IN FIREBASE FIRESTORE ON MOUNT
       useEffect(() => {
         async function fetchCloudData() {
           try {
