@@ -2110,10 +2110,169 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
       );
     }
 
-    function PrintableFormsView({ project, selectedFormId, setSelectedFormId }) {
-      return <div className="p-6">Printable Forms View</div>;
-    }
+    function PrintableFormsView({ project }) {
+      const [selectedFormId, setSelectedFormId] = useState(project.forms[0]?.id || '');
 
+      // Keep selectedFormId synced if project changes
+      useEffect(() => {
+        if (project.forms && project.forms.length > 0 && !project.forms.find(f => f.id === selectedFormId)) {
+          setSelectedFormId(project.forms[0].id);
+        }
+      }, [project]);
+
+      const activeForm = project.forms.find(f => f.id === selectedFormId);
+
+      return (
+        <div className="space-y-6 text-base">
+          {/* CONTROLS BAR (HIDDEN WHEN PRINTING) */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden">
+            <div className="flex-1 w-full sm:w-auto">
+              <h2 className="text-2xl font-black text-slate-900">Printable Field Survey Forms</h2>
+              <p className="text-base text-slate-600 mt-1">Generate clean, standardized paper questionnaires for offline field data collection.</p>
+              
+              <div className="mt-4 max-w-md">
+                <label className="block text-xs font-extrabold uppercase text-slate-500 mb-1">Select Form to Print</label>
+                <select 
+                  value={selectedFormId} 
+                  onChange={(e) => setSelectedFormId(e.target.value)} 
+                  className="w-full border border-slate-300 rounded-xl p-3 font-bold bg-white text-slate-900"
+                >
+                  {project.forms.length === 0 && <option value="">No forms available</option>}
+                  {project.forms.map(f => (
+                    <option key={f.id} value={f.id}>{f.title} ({f.fields?.length || 0} Questions)</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {activeForm && (
+              <button 
+                onClick={() => window.print()} 
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-xl font-extrabold text-sm flex items-center gap-2 shadow-md transition shrink-0"
+              >
+                <Printer className="h-5 w-5" /> Print Paper Form
+              </button>
+            )}
+          </div>
+
+          {/* PRINTABLE PAPER SHEET */}
+          {activeForm ? (
+            <div className="bg-white p-8 sm:p-12 rounded-2xl shadow border border-slate-300 max-w-4xl mx-auto space-y-8 print:shadow-none print:border-none print:p-0">
+              {/* DOCUMENT HEADER */}
+              <div className="border-b-2 border-slate-900 pb-6 flex justify-between items-start">
+                <div>
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-indigo-700 block">
+                    {project.name} ({project.code}) · {project.donor || 'M&E Field Survey'}
+                  </span>
+                  <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">{activeForm.title}</h1>
+                  {activeForm.description && (
+                    <p className="text-sm text-slate-600 mt-1">{activeForm.description}</p>
+                  )}
+                </div>
+                <div className="text-right text-xs font-mono text-slate-600 border border-slate-300 p-2.5 rounded-lg">
+                  <div><strong>Form ID:</strong> {activeForm.id}</div>
+                  <div><strong>Location:</strong> {project.location || '___________'}</div>
+                </div>
+              </div>
+
+              {/* ENUMERATOR METADATA BOX */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-300 text-sm">
+                <div>
+                  <span className="font-bold text-slate-700 block text-xs uppercase">Enumerator Name:</span>
+                  <div className="border-b border-slate-400 h-6 mt-1"></div>
+                </div>
+                <div>
+                  <span className="font-bold text-slate-700 block text-xs uppercase">Date of Interview:</span>
+                  <div className="border-b border-slate-400 h-6 mt-1 font-mono text-xs text-slate-400 pt-1">DD / MM / 2026</div>
+                </div>
+                <div>
+                  <span className="font-bold text-slate-700 block text-xs uppercase">Ward / Village / Site:</span>
+                  <div className="border-b border-slate-400 h-6 mt-1"></div>
+                </div>
+              </div>
+
+              {/* FORM QUESTIONS LIST */}
+              <div className="space-y-6">
+                {(activeForm.fields || []).map((field, idx) => (
+                  <div key={field.id} className="border-b border-slate-200 pb-5 space-y-2.5 break-inside-avoid">
+                    <div className="flex justify-between items-baseline gap-2">
+                      <label className="font-extrabold text-slate-900 text-base">
+                        <span className="font-mono text-indigo-700 mr-2">Q{idx + 1}.</span>
+                        {field.label || 'Untitled Question'}
+                        {field.required && <span className="text-red-600 ml-1">*</span>}
+                      </label>
+                      {field.skipLogic && (
+                        <span className="text-xs font-mono bg-amber-50 text-amber-800 border border-amber-300 px-2 py-0.5 rounded">
+                          Skip Rule: {field.skipLogic}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* RENDER PAPER RESPONSE AREA BASED ON FIELD TYPE */}
+                    {field.type === 'textarea' ? (
+                      <div className="space-y-3 pt-2">
+                        <div className="border-b border-slate-400 h-6"></div>
+                        <div className="border-b border-slate-400 h-6"></div>
+                        <div className="border-b border-slate-400 h-6"></div>
+                      </div>
+                    ) : (field.type === 'select' || field.type === 'checkbox') ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 pl-6">
+                        {(field.options && field.options.length > 0 ? field.options : ['Option 1', 'Option 2']).map((opt, oIdx) => (
+                          <div key={oIdx} className="flex items-center gap-2.5 text-sm font-bold text-slate-800">
+                            <span className={`inline-block w-4 h-4 border-2 border-slate-700 ${field.type === 'select' ? 'rounded-full' : 'rounded-sm'}`}></span>
+                            <span>{opt}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : field.type === 'boolean' ? (
+                      <div className="flex gap-8 pt-1 pl-6 text-sm font-bold text-slate-800">
+                        <div className="flex items-center gap-2"><span className="inline-block w-4 h-4 rounded-full border-2 border-slate-700"></span> Yes</div>
+                        <div className="flex items-center gap-2"><span className="inline-block w-4 h-4 rounded-full border-2 border-slate-700"></span> No</div>
+                      </div>
+                    ) : field.type === 'rating' ? (
+                      <div className="flex gap-6 pt-1 pl-6 text-sm font-bold text-slate-800">
+                        {[1, 2, 3, 4, 5].map(num => (
+                          <div key={num} className="flex items-center gap-1.5">
+                            <span className="inline-block w-4 h-4 rounded-full border-2 border-slate-700"></span> {num}
+                          </div>
+                        ))}
+                      </div>
+                    ) : field.type === 'location' ? (
+                      <div className="grid grid-cols-2 gap-6 pt-2 pl-6 text-xs font-mono text-slate-600">
+                        <div>Latitude: _______________________</div>
+                        <div>Longitude: ______________________</div>
+                      </div>
+                    ) : field.type === 'date' ? (
+                      <div className="pt-2 pl-6 font-mono text-sm text-slate-500">
+                        [ ___ / ___ / 2026 ] (DD/MM/YYYY)
+                      </div>
+                    ) : (
+                      <div className="pt-2 pl-6">
+                        <div className="border-b border-slate-400 h-6 w-full max-w-lg"></div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* SIGN-OFF FOOTER */}
+              <div className="pt-6 border-t-2 border-slate-800 grid grid-cols-2 gap-8 text-xs text-slate-700 font-bold break-inside-avoid">
+                <div>
+                  <span>Enumerator Signature: ___________________________</span>
+                </div>
+                <div className="text-right">
+                  <span>Supervisor Verification: ________________________</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center text-slate-500 font-bold">
+              No forms have been created for this project yet. Go to Form Builder to create one.
+            </div>
+          )}
+        </div>
+      );
+    }
     function LicenseActivationView({ license, setLicense, isGateway = false }) {
       return <div className="p-6">License View</div>;
     }
