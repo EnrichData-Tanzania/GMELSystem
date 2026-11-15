@@ -1360,11 +1360,19 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
       const indicatorSummaries = project.indicators.map(ind => {
         const actual = getCalculatedActual(project, ind);
         const targetObj = ind.target || { general: 0, male: 0, female: 0, total: 1 };
+        const baselineObj = ind.baseline || { general: 0, male: 0, female: 0, total: 0 };
+        
         const targetVal = targetObj.total || targetObj.general || 1;
         const actualVal = actual.total || actual.general || 0;
-        const pct = Math.min(100, Math.max(0, Math.round((actualVal / targetVal) * 100)));
-        totalPctSum += pct;
-        return { ...ind, actual, targetObj, targetVal, actualVal, pct };
+        const baselineVal = baselineObj.total || baselineObj.general || 0;
+
+        const pctTarget = Math.min(100, Math.max(0, Math.round((actualVal / targetVal) * 100)));
+        // Improvement progress of actual from baseline relative to target
+        const range = targetVal - baselineVal;
+        const pctBaselineImprovement = range > 0 ? Math.min(100, Math.max(0, Math.round(((actualVal - baselineVal) / range) * 100))) : pctTarget;
+
+        totalPctSum += pctTarget;
+        return { ...ind, actual, targetObj, baselineObj, targetVal, actualVal, baselineVal, pctTarget, pctBaselineImprovement };
       });
       const avgPerformance = project.indicators.length > 0 ? Math.round(totalPctSum / project.indicators.length) : 0;
 
@@ -1411,27 +1419,45 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
               </div>
             </div>
 
-            <h3 className="text-lg font-black text-slate-900 pt-4 border-t">Disaggregated Indicator Progress &amp; Status Bars</h3>
+            <h3 className="text-lg font-black text-slate-900 pt-4 border-t">Indicator Progress &amp; Side-by-Side Status Bars</h3>
             <div className="space-y-4">
               {indicatorSummaries.map(ind => (
-                <div key={ind.id} className="p-4 bg-slate-50 rounded-xl border space-y-3">
+                <div key={ind.id} className="p-5 bg-slate-50 rounded-2xl border space-y-3">
                   <div className="flex justify-between items-start font-bold">
                     <div>
-                      <span className="px-2 py-0.5 rounded text-xs bg-indigo-100 text-indigo-800 font-extrabold mr-2">{ind.level}</span>
-                      <span className="text-slate-900">{ind.title}</span>
+                      <span className="px-2.5 py-1 rounded text-xs bg-indigo-100 text-indigo-900 font-extrabold mr-2">{ind.level}</span>
+                      <span className="text-slate-900 text-base">{ind.title}</span>
                     </div>
-                    <span className="text-indigo-900 font-mono font-black">{ind.actualVal} / {ind.targetVal} {ind.unit} ({ind.pct}%)</span>
+                    <span className="text-indigo-900 font-mono font-black">{ind.actualVal} / {ind.targetVal} {ind.unit}</span>
                   </div>
 
-                  {/* VISUAL PROGRESS BAR */}
-                  <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden border">
-                    <div className="bg-indigo-600 h-2.5 rounded-full transition-all" style={{ width: `${ind.pct}%` }}></div>
+                  {/* SIDE-BY-SIDE STATUS BARS */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5">
+                      <div className="flex justify-between text-xs font-bold text-slate-700">
+                        <span>Actual vs. Target Progress</span>
+                        <span className="text-indigo-600 font-mono">{ind.pctTarget}%</span>
+                      </div>
+                      <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                        <div className="bg-indigo-600 h-2.5 rounded-full transition-all" style={{ width: `${ind.pctTarget}%` }}></div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5">
+                      <div className="flex justify-between text-xs font-bold text-slate-700">
+                        <span>Actual Improvement from Baseline</span>
+                        <span className="text-emerald-600 font-mono">{ind.pctBaselineImprovement}%</span>
+                      </div>
+                      <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                        <div className="bg-emerald-600 h-2.5 rounded-full transition-all" style={{ width: `${ind.pctBaselineImprovement}%` }}></div>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="text-xs text-slate-600 font-mono font-bold grid grid-cols-1 md:grid-cols-3 gap-2 pt-1 border-t border-slate-200">
-                    <div><strong>Baseline:</strong> {ind.baseline.general} / {ind.baseline.male} / {ind.baseline.female} / {ind.baseline.total}</div>
+                  <div className="text-xs text-slate-600 font-mono font-bold grid grid-cols-1 md:grid-cols-3 gap-2 pt-2 border-t border-slate-200">
+                    <div><strong>Baseline:</strong> {ind.baselineObj.general} / {ind.baselineObj.male} / {ind.baselineObj.female} / {ind.baselineObj.total}</div>
                     <div className="text-slate-800"><strong>Target:</strong> {ind.targetObj.general} / {ind.targetObj.male} / {ind.targetObj.female} / {ind.targetObj.total}</div>
-                    <div className="text-indigo-700"><strong>Actual:</strong> {ind.actual.general} / {ind.actual.male} / {ind.actual.female} / {ind.actual.total}</div>
+                    <div className="text-indigo-700"><strong>Actual Achieved:</strong> {ind.actual.general} / {ind.actual.male} / {ind.actual.female} / {ind.actual.total}</div>
                   </div>
                 </div>
               ))}
@@ -1445,7 +1471,6 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
         </div>
       );
     }
-
     function FormBuilderView({ project, setProjects, onUpdateForm, onDeleteForm }) {
       const [formTitle, setFormTitle] = useState('');
       const [formDesc, setFormDesc] = useState('');
