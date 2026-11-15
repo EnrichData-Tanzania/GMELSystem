@@ -2281,7 +2281,8 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
         level: 'Level 1: 5-Day Demo',
         code: 'DEMO-5DAYS',
         activatedAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
+        expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+        demoClaimed: false
       };
 
       const now = new Date();
@@ -2332,7 +2333,7 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
           setLicense(newTier);
         }
         setInputKey('');
-        setStatusMsg({ type: 'success', text: `Successfully activated ${newTier.level}! Synced to cloud.` });
+        setStatusMsg({ type: 'success', text: `Successfully activated ${newTier.level}! Synced to cloud storage.` });
       };
 
       return (
