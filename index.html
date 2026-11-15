@@ -1471,64 +1471,130 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
         </div>
       );
     }
-    function FormBuilderView({ project, setProjects, onUpdateForm, onDeleteForm }) {
+    function FormBuilderView({ project, setProjects }) {
       const [formTitle, setFormTitle] = useState('');
       const [formDesc, setFormDesc] = useState('');
-      const [fields, setFields] = useState([{ id: 'field-1', label: 'Beneficiary Full Name', type: 'text', required: true, options: [], skipLogic: null }]);
+      const [fields, setFields] = useState([
+        { id: 'field-1', label: 'Beneficiary Full Name', type: 'text', required: true, options: [], skipLogic: '' }
+      ]);
+
+      const handleAddField = (type) => {
+        setFields([
+          ...fields, 
+          { 
+            id: `field-${Date.now()}`, 
+            label: '', 
+            type, 
+            required: true, 
+            options: type === 'select' ? ['Option 1', 'Option 2'] : [], 
+            skipLogic: '' 
+          }
+        ]);
+      };
+
+      const handleRemoveField = (index) => {
+        if (fields.length === 1) {
+          alert('A form must contain at least one question.');
+          return;
+        }
+        setFields(fields.filter((_, i) => i !== index));
+      };
 
       const handleSaveForm = () => {
-        if (!formTitle.trim()) return;
-        const formId = createId('form');
-        const newForm = {
-          id: formId,
-          title: formTitle,
-          description: formDesc,
-          fields
+        if (!formTitle.trim()) {
+          alert('Please enter a form title.');
+          return;
+        }
+        const newForm = { 
+          id: createId('form'), 
+          title: formTitle, 
+          description: formDesc, 
+          fields 
         };
         setProjects(prev => prev.map(p => p.id !== project.id ? p : { ...p, forms: [...p.forms, newForm] }));
         setFormTitle('');
         setFormDesc('');
-        setFields([{ id: 'field-1', label: 'Beneficiary Full Name', type: 'text', required: true, options: [], skipLogic: null }]);
-        alert('Custom form published successfully to Firebase!');
+        setFields([{ id: 'field-1', label: 'Beneficiary Full Name', type: 'text', required: true, options: [], skipLogic: '' }]);
+        alert('Custom form published successfully to Firebase Firestore!');
       };
 
       return (
         <div className="space-y-6 text-base">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <h2 className="text-2xl font-black text-slate-900">Advanced Form Generator</h2>
-            <p className="text-base text-slate-600 mt-1">Design surveys for {project.name}.</p>
+            <h2 className="text-2xl font-black text-slate-900">Advanced Form Generator &amp; Skip Logic</h2>
+            <p className="text-base text-slate-600 mt-1">Design extensible questionnaires with conditional skip logic for {project.name}.</p>
           </div>
+
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-            <h3 className="text-lg font-extrabold text-slate-900">Create New Form</h3>
-            <input type="text" placeholder="Form Name" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} className="w-full border rounded-xl p-3 font-bold" />
-            <button onClick={handleSaveForm} className="bg-emerald-600 text-white font-extrabold px-6 py-3 rounded-xl">Publish Form</button>
-          </div>
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-            <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2 border-b pb-3">
-              <BarChart3 className="h-6 w-6 text-indigo-600" /> Monthly Field Data Submissions Trend (2026)
-            </h3>
-            <div className="h-56 flex items-end justify-between gap-2 pt-6 px-4 border-b border-slate-100">
-              {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, idx) => {
-                const count = project.submissions.filter(sub => {
-                  const d = new Date(sub.timestamp);
-                  return !isNaN(d) && d.getMonth() === idx;
-                }).length;
-                const maxSubCount = Math.max(5, ...['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((_, i) => project.submissions.filter(sub => {
-                  const d = new Date(sub.timestamp);
-                  return !isNaN(d) && d.getMonth() === i;
-                }).length));
-                const heightPct = Math.round((count / maxSubCount) * 100);
-                return (
-                  <div key={m} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
-                    <span className="text-xs font-mono font-bold text-slate-500 group-hover:text-indigo-600">{count}</span>
-                    <div className="w-full max-w-[36px] bg-indigo-50 rounded-t-lg overflow-hidden flex items-end">
-                      <div className="w-full bg-indigo-600 rounded-t-lg transition-all" style={{ height: `${Math.max(8, heightPct)}%` }}></div>
-                    </div>
-                    <span className="text-xs font-bold text-slate-600">{m}</span>
+            <h3 className="text-lg font-extrabold text-slate-900">Create New Survey Form</h3>
+            <input 
+              type="text" 
+              placeholder="Form Title (e.g. Household Baseline Survey)" 
+              value={formTitle} 
+              onChange={(e) => setFormTitle(e.target.value)} 
+              className="w-full border rounded-xl p-3 font-bold" 
+            />
+            <input 
+              type="text" 
+              placeholder="Short Description" 
+              value={formDesc} 
+              onChange={(e) => setFormDesc(e.target.value)} 
+              className="w-full border rounded-xl p-3 font-bold" 
+            />
+
+            <div className="border-t pt-4 space-y-4">
+              <h4 className="font-extrabold text-slate-800">Form Questions ({fields.length})</h4>
+              {fields.map((field, idx) => (
+                <div key={field.id} className="p-4 bg-slate-50 border rounded-xl space-y-3">
+                  <div className="flex gap-3 items-center">
+                    <input 
+                      type="text" 
+                      placeholder={`Question ${idx + 1} Label`} 
+                      value={field.label} 
+                      onChange={(e) => {
+                        const updated = [...fields]; 
+                        updated[idx].label = e.target.value; 
+                        setFields(updated);
+                      }} 
+                      className="flex-1 border rounded-lg p-2.5 font-bold bg-white" 
+                    />
+                    <span className="px-3 py-2 bg-indigo-100 text-indigo-800 font-bold rounded-lg text-sm">{field.type}</span>
+                    <button 
+                      onClick={() => handleRemoveField(idx)} 
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg border border-red-200"
+                      title="Remove Question"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
-                );
-              })}
+                  <div className="flex gap-2 items-center text-sm">
+                    <label className="font-bold text-slate-600">Skip Logic Trigger:</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. If Answer == 'No', skip to Q5" 
+                      value={field.skipLogic || ''} 
+                      onChange={(e) => {
+                        const updated = [...fields]; 
+                        updated[idx].skipLogic = e.target.value; 
+                        setFields(updated);
+                      }} 
+                      className="flex-1 border rounded-lg p-2 font-bold bg-white" 
+                    />
+                  </div>
+                </div>
+              ))}
+              
+              <div className="flex flex-wrap gap-2 pt-2">
+                <button onClick={() => handleAddField('text')} className="px-4 py-2 bg-slate-800 text-white font-bold rounded-xl text-sm">+ Text Question</button>
+                <button onClick={() => handleAddField('select')} className="px-4 py-2 bg-slate-800 text-white font-bold rounded-xl text-sm">+ Dropdown Question</button>
+                <button onClick={() => handleAddField('number')} className="px-4 py-2 bg-slate-800 text-white font-bold rounded-xl text-sm">+ Numeric Question</button>
+                <button onClick={() => handleAddField('location')} className="px-4 py-2 bg-slate-800 text-white font-bold rounded-xl text-sm">+ GPS Location</button>
+              </div>
             </div>
+
+            <button onClick={handleSaveForm} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 rounded-xl shadow mt-4">
+              Publish Form to Firebase
+            </button>
           </div>
         </div>
       );
