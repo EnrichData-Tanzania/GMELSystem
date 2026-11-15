@@ -496,42 +496,66 @@
                 }} 
               />
             )}
-            {activeTab === 'entry' && (
+           {activeTab === 'entry' && (
               <DataEntryView 
                 project={currentProject} 
                 onSubmitForm={async (formId, data) => {
-                  const submissionObj = { id: createId('sub'), formId, timestamp: new Date().toLocaleString(), data };
+                  const submissionObj = { 
+                    id: createId('sub'), 
+                    formId, 
+                    timestamp: new Date().toLocaleString(), 
+                    data 
+                  };
                   
+                  // 1. Create the updated projects array
                   const updatedProjects = projects.map(p => p.id !== currentProject.id ? p : {
                     ...p,
-                    submissions: [submissionObj, ...p.submissions]
+                    submissions: [submissionObj, ...(p.submissions || [])]
                   });
+
+                  // 2. Update React state immediately
                   setProjects(updatedProjects);
 
+                  // 3. Immediately write the updated projects array to Firebase Firestore
                   if (db) {
                     try {
                       const docRef = doc(db, 'gmel_systems', 'main_workspace');
-                      await setDoc(docRef, { projects: updatedProjects, license, updated_at: new Date() }, { merge: true });
-                      alert('Data successfully saved & synced to Firebase Firestore!');
+                      await setDoc(docRef, { 
+                        projects: updatedProjects, 
+                        license, 
+                        updated_at: new Date() 
+                      }, { merge: true });
+                      alert('Survey record successfully saved and synced to Firebase Firestore!');
                     } catch (err) {
                       console.error('Firebase save error:', err);
-                      alert('Error saving record to Firebase. Please check your Firestore Security Rules.');
+                      alert('Error saving record to Firebase. Please check your Firestore security rules.');
                     }
+                  } else {
+                    alert('Database reference not initialized.');
                   }
                 }} 
-                onDeleteSubmission={(subId) => {
-                  setProjects(prev => prev.map(p => p.id !== currentProject.id ? p : {
+                onDeleteSubmission={async (subId) => {
+                  const updatedProjects = projects.map(p => p.id !== currentProject.id ? p : {
                     ...p,
                     submissions: p.submissions.filter(s => s.id !== subId)
-                  }));
+                  });
+                  setProjects(updatedProjects);
+                  if (db) {
+                    const docRef = doc(db, 'gmel_systems', 'main_workspace');
+                    await setDoc(docRef, { projects: updatedProjects, license, updated_at: new Date() }, { merge: true });
+                  }
                 }} 
-                onClearAllSubmissions={() => {
+                onClearAllSubmissions={async () => {
                   if (!window.confirm('Clear all submissions?')) return;
-                  setProjects(prev => prev.map(p => p.id !== currentProject.id ? p : { ...p, submissions: [] }));
+                  const updatedProjects = projects.map(p => p.id !== currentProject.id ? p : { ...p, submissions: [] });
+                  setProjects(updatedProjects);
+                  if (db) {
+                    const docRef = doc(db, 'gmel_systems', 'main_workspace');
+                    await setDoc(docRef, { projects: updatedProjects, license, updated_at: new Date() }, { merge: true });
+                  }
                 }} 
               />
-            )}
-            {activeTab === 'export' && (
+            )}            {activeTab === 'export' && (
               <ExportSuiteView 
                 project={currentProject}
                 getCalculatedActual={getCalculatedActual}
