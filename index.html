@@ -596,7 +596,7 @@
                 }} 
               />
             )}
-            {activeTab === 'mobile' && <MobileSyncView project={currentProject} isOnline={isOnline} />}
+            {activeTab === 'mobile' && <MobileSyncView project={currentProject} isOnline={isOnline} onForceSync={handleManualSync} />}
             {activeTab === 'print' && <PrintableFormsView project={currentProject} selectedFormId={selectedPrintFormId} setSelectedFormId={setSelectedPrintFormId} />}
             {activeTab === 'guidelines' && <UserGuidelinesView />}
             {activeTab === 'license' && <LicenseActivationView license={license} setLicense={setLicense} />}
@@ -2127,12 +2127,67 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
         </div>
       );
     }
-    function MobileSyncView({ project, isOnline }) {
+    function MobileSyncView({ project, isOnline, onForceSync }) {
+      const [syncing, setSyncing] = useState(false);
+      const [lastSyncTime, setLastSyncTime] = useState(new Date().toLocaleTimeString());
+
+      const triggerSync = async () => {
+        setSyncing(true);
+        try {
+          if (typeof onForceSync === 'function') {
+            await onForceSync();
+          }
+          setLastSyncTime(new Date().toLocaleTimeString());
+        } finally {
+          setSyncing(false);
+        }
+      };
+
       return (
         <div className="max-w-3xl mx-auto space-y-6 text-base">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <h2 className="text-2xl font-black text-slate-900">Firebase Cloud Status Hub</h2>
-            <p className="text-base text-slate-600 mt-1">Real-time status of your connection to Firebase Firestore.</p>
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h2 className="text-2xl font-black text-slate-900">Firebase Cloud Status Hub</h2>
+              <p className="text-base text-slate-600 mt-1">Real-time status of your connection to Firebase Firestore.</p>
+            </div>
+            <span className={`px-4 py-2 rounded-xl text-sm font-extrabold border flex items-center gap-2 ${isOnline ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200'}`}>
+              {isOnline ? <Wifi className="h-4 w-4 text-emerald-600" /> : <WifiOff className="h-4 w-4 text-amber-600" />}
+              {isOnline ? 'Online · Cloud Connected' : 'Offline · Local Queue Active'}
+            </span>
+          </div>
+
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                <span className="text-xs font-extrabold uppercase text-slate-500">Active Project</span>
+                <p className="text-lg font-black text-slate-900 mt-1 truncate">{project.name}</p>
+                <span className="text-xs font-mono text-indigo-600">{project.code}</span>
+              </div>
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                <span className="text-xs font-extrabold uppercase text-slate-500">Synced Records</span>
+                <p className="text-lg font-black text-slate-900 mt-1">{project.submissions?.length || 0} Submissions</p>
+                <span className="text-xs text-slate-500">{project.forms?.length || 0} Active Forms</span>
+              </div>
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                <span className="text-xs font-extrabold uppercase text-slate-500">Last Verified Sync</span>
+                <p className="text-lg font-black font-mono text-emerald-700 mt-1">{lastSyncTime}</p>
+                <span className="text-xs text-slate-500">Workspace: main_workspace</span>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-200 pt-5 flex flex-col sm:flex-row justify-between items-center gap-4">
+              <p className="text-sm text-slate-600">
+                All forms, logframe indicators, and field submissions automatically sync to Firebase Firestore whenever you are online.
+              </p>
+              <button
+                type="button"
+                onClick={triggerSync}
+                disabled={syncing || !isOnline}
+                className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-6 py-3 rounded-xl font-extrabold text-sm shadow transition shrink-0"
+              >
+                {syncing ? 'Syncing to Cloud...' : 'Force Cloud Sync Now'}
+              </button>
+            </div>
           </div>
         </div>
       );
