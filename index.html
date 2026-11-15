@@ -1833,12 +1833,95 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
       );
     }
 
-    function ExportSuiteView({ project, getCalculatedActual, onExportSubmissions, onExportLogframe, onExportBackup }) {
+   function ExportSuiteView({ project, onExportSubmissions }) {
+      const handleExportLogframe = () => {
+        if (!project.indicators || project.indicators.length === 0) {
+          alert('No indicators available in the Logframe to export.');
+          return;
+        }
+        const logframeData = project.indicators.map(ind => ({
+          Level: ind.level,
+          Statement: ind.title,
+          Unit: ind.unit,
+          'Baseline (Gen)': ind.baseline?.general || 0,
+          'Baseline (Male)': ind.baseline?.male || 0,
+          'Baseline (Female)': ind.baseline?.female || 0,
+          'Baseline (Total)': ind.baseline?.total || 0,
+          'Target (Gen)': ind.target?.general || 0,
+          'Target (Male)': ind.target?.male || 0,
+          'Target (Female)': ind.target?.female || 0,
+          'Target (Total)': ind.target?.total || 0,
+          Formula: ind.calcType || 'SUM'
+        }));
+        exportCSV(logframeData, `${project.code}_logframe_matrix.csv`);
+      };
+
+      const handleExportExpenses = () => {
+        if (!project.expenses || project.expenses.length === 0) {
+          alert('No expense records available to export.');
+          return;
+        }
+        exportCSV(project.expenses, `${project.code}_budget_expenses.csv`);
+      };
+
       return (
         <div className="space-y-6 text-base">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <h2 className="text-2xl font-black text-slate-900">GMEL Data Export Suite</h2>
-            <p className="text-base text-slate-600 mt-1">Export raw data and logframes.</p>
+            <p className="text-base text-slate-600 mt-1">Export raw data, disaggregated logframes, and financial reports for {project.name}.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* SUBMISSIONS EXPORT CARD */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between space-y-4">
+              <div className="space-y-2">
+                <div className="bg-indigo-50 text-indigo-600 p-3 rounded-xl w-fit border border-indigo-100">
+                  <Database className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-extrabold text-slate-900">Field Submissions CSV</h3>
+                <p className="text-sm text-slate-600">Export all raw questionnaire and survey responses recorded by enumerators in the field.</p>
+              </div>
+              <button 
+                onClick={onExportSubmissions} 
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-3 rounded-xl flex items-center justify-center gap-2 shadow transition"
+              >
+                <Download className="h-5 w-5" /> Export Submissions ({project.submissions.length})
+              </button>
+            </div>
+
+            {/* LOGFRAME MATRIX EXPORT CARD */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between space-y-4">
+              <div className="space-y-2">
+                <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl w-fit border border-emerald-100">
+                  <TrendingUp className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-extrabold text-slate-900">Logframe Matrix CSV</h3>
+                <p className="text-sm text-slate-600">Export the complete logical framework including baselines, targets, and disaggregated gender metrics.</p>
+              </div>
+              <button 
+                onClick={handleExportLogframe} 
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 rounded-xl flex items-center justify-center gap-2 shadow transition"
+              >
+                <Download className="h-5 w-5" /> Export Logframe ({project.indicators.length})
+              </button>
+            </div>
+
+            {/* EXPENSES / BUDGET EXPORT CARD */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between space-y-4">
+              <div className="space-y-2">
+                <div className="bg-amber-50 text-amber-600 p-3 rounded-xl w-fit border border-amber-100">
+                  <DollarSign className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-extrabold text-slate-900">Financial &amp; Expense Logs</h3>
+                <p className="text-sm text-slate-600">Export itemized project expenditure logs and budget utilization details for donor auditing.</p>
+              </div>
+              <button 
+                onClick={handleExportExpenses} 
+                className="w-full bg-amber-600 hover:bg-amber-700 text-white font-extrabold py-3 rounded-xl flex items-center justify-center gap-2 shadow transition"
+              >
+                <Download className="h-5 w-5" /> Export Expenses ({project.expenses?.length || 0})
+              </button>
+            </div>
           </div>
         </div>
       );
