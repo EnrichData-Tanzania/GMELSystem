@@ -1115,13 +1115,11 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
 
     function LogframeView({ project, getCalculatedActual, setProjects, userRole }) {
       const [showAddModal, setShowAddModal] = useState(false);
-      const [editingIndicatorId, setEditingIndicatorId] = useState(null);
-      
       const [newInd, setNewInd] = useState({ 
         level: 'Output', 
         title: '', 
         baseline: { general: 0, male: 0, female: 0, total: 0 },
-        target: { general: 100, male: 0, female: 0, total: 100 },
+        target: { general: 100, male: 50, female: 50, total: 100 },
         unit: 'Units' 
       });
 
@@ -1141,7 +1139,7 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
 
         setProjects(prev => prev.map(p => p.id !== project.id ? p : { ...p, indicators: [...p.indicators, indicatorObj] }));
         setShowAddModal(false);
-        setNewInd({ level: 'Output', title: '', baseline: { general: 0, male: 0, female: 0, total: 0 }, target: { general: 100, male: 0, female: 0, total: 100 }, unit: 'Units' });
+        setNewInd({ level: 'Output', title: '', baseline: { general: 0, male: 0, female: 0, total: 0 }, target: { general: 100, male: 50, female: 50, total: 100 }, unit: 'Units' });
       };
 
       return (
@@ -1149,10 +1147,10 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
           <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <div>
               <h2 className="text-2xl font-black text-slate-900">Logical Framework (Logframe) Matrix</h2>
-              <p className="text-base text-slate-600 mt-1">Manage indicators with fully disaggregated demographic metrics.</p>
+              <p className="text-base text-slate-600 mt-1">Demographically disaggregated indicators with baseline and target tracking.</p>
             </div>
             {userRole !== 'Enumerator' && (
-              <button onClick={() => { setEditingIndicatorId(null); setShowAddModal(true); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-extrabold text-base flex items-center gap-2 shadow">
+              <button onClick={() => setShowAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-extrabold text-base flex items-center gap-2 shadow">
                 <PlusCircle className="h-5 w-5" /> Add Indicator
               </button>
             )}
@@ -1161,37 +1159,92 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[1100px]">
               <thead>
-                <tr className="bg-slate-100 text-slate-800 text-xs uppercase font-extrabold border-b border-slate-200">
+                <tr className="bg-slate-100 text-slate-800 text-xs uppercase font-extrabold border-b">
                   <th className="p-4">Level</th>
                   <th className="p-4">Indicator Statement</th>
-                  <th className="p-4 text-center">Baseline</th>
-                  <th className="p-4 text-center">Target</th>
-                  <th className="p-4 text-center">Actual</th>
+                  <th className="p-4 text-center">Baseline (Gen / M / F / Tot)</th>
+                  <th className="p-4 text-center">Target (Gen / M / F / Tot)</th>
+                  <th className="p-4 text-center">Actual Achieved (Gen / M / F / Tot)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 text-base">
                 {project.indicators.map((ind) => {
                   const actual = getCalculatedActual(project, ind);
-                  const baseline = typeof ind.baseline === 'object' ? ind.baseline : { general: ind.baseline || 0, male: 0, female: 0, total: ind.baseline || 0 };
-                  const target = typeof ind.target === 'object' ? ind.target : { general: ind.target || 0, male: 0, female: 0, total: ind.target || 0 };
+                  const b = ind.baseline || { general: 0, male: 0, female: 0, total: 0 };
+                  const t = ind.target || { general: 0, male: 0, female: 0, total: 0 };
 
                   return (
-                    <tr key={ind.id} className="hover:bg-slate-50">
-                      <td className="p-4 font-bold align-top"><span className="px-3 py-1 rounded-lg text-sm font-extrabold border bg-indigo-50 text-indigo-900 border-indigo-200">{ind.level}</span></td>
-                      <td className="p-4 font-bold text-slate-900 align-top max-w-xs">{ind.title}</td>
-                      <td className="p-4 text-center font-mono text-sm text-slate-700 align-top">{baseline.total || baseline.general} {ind.unit}</td>
-                      <td className="p-4 text-center font-mono text-sm text-slate-800 align-top">{target.total || target.general} {ind.unit}</td>
-                      <td className="p-4 text-center font-mono text-sm text-indigo-900 align-top font-black">{actual.total || actual.general} {ind.unit}</td>
+                    <tr key={ind.id} className="hover:bg-slate-50 font-bold">
+                      <td className="p-4 align-top"><span className="px-3 py-1 rounded-lg text-sm font-extrabold border bg-indigo-50 text-indigo-900 border-indigo-200">{ind.level}</span></td>
+                      <td className="p-4 text-slate-900 align-top max-w-xs">{ind.title}</td>
+                      <td className="p-4 text-center font-mono text-sm text-slate-600 align-top">
+                        {b.general} / {b.male} / {b.female} / <strong className="text-slate-900">{b.total}</strong> {ind.unit}
+                      </td>
+                      <td className="p-4 text-center font-mono text-sm text-slate-800 align-top">
+                        {t.general} / {t.male} / {t.female} / <strong className="text-slate-900">{t.total}</strong> {ind.unit}
+                      </td>
+                      <td className="p-4 text-center font-mono text-sm text-indigo-900 align-top font-black">
+                        {actual.general} / {actual.male} / {actual.female} / <strong className="text-indigo-950">{actual.total}</strong> {ind.unit}
+                      </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
+
+          {showAddModal && (
+            <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-2xl shadow-2xl border max-w-lg w-full p-6 space-y-4">
+                <div className="flex justify-between items-center border-b pb-3">
+                  <h3 className="text-xl font-extrabold text-slate-900">Add Logframe Indicator</h3>
+                  <button onClick={() => setShowAddModal(false)} className="text-slate-400 font-bold">✕</button>
+                </div>
+                <div className="space-y-4 text-base">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Level</label>
+                      <select value={newInd.level} onChange={(e) => setNewInd({...newInd, level: e.target.value})} className="w-full border rounded-xl p-3 font-bold bg-white">
+                        <option value="Impact">Impact</option>
+                        <option value="Outcome">Outcome</option>
+                        <option value="Output">Output</option>
+                        <option value="Activity">Activity</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Unit of Measure</label>
+                      <input type="text" value={newInd.unit} onChange={(e) => setNewInd({...newInd, unit: e.target.value})} className="w-full border rounded-xl p-3 font-bold" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">Indicator Statement *</label>
+                    <textarea rows="2" placeholder="e.g. Number of community members trained" value={newInd.title} onChange={(e) => setNewInd({...newInd, title: e.target.value})} className="w-full border rounded-xl p-3 font-bold" />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">Target Gen</label>
+                      <input type="number" value={newInd.target.general} onChange={(e) => setNewInd({...newInd, target: {...newInd.target, general: Number(e.target.value)}})} className="w-full border rounded-xl p-2.5 font-mono font-bold" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">Target Male</label>
+                      <input type="number" value={newInd.target.male} onChange={(e) => setNewInd({...newInd, target: {...newInd.target, male: Number(e.target.value)}})} className="w-full border rounded-xl p-2.5 font-mono font-bold" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">Target Female</label>
+                      <input type="number" value={newInd.target.female} onChange={(e) => setNewInd({...newInd, target: {...newInd.target, female: Number(e.target.value)}})} className="w-full border rounded-xl p-2.5 font-mono font-bold" />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-3 pt-4 border-t">
+                    <button onClick={() => setShowAddModal(false)} className="px-4 py-2.5 border rounded-xl font-bold">Cancel</button>
+                    <button onClick={handleAddIndicator} className="px-5 py-2.5 bg-indigo-600 text-white font-extrabold rounded-xl">Save Indicator</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       );
     }
-
     function CustomReportsView({ project, getCalculatedActual }) {
       return (
         <div className="space-y-6 text-base">
