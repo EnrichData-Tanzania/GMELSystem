@@ -2277,12 +2277,28 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
       const [inputKey, setInputKey] = useState('');
       const [statusMsg, setStatusMsg] = useState(null);
 
+      // AUTOMATICALLY START 5-DAY DEMO ON FIRST OPEN IF NO LICENSE EXISTS
+      useEffect(() => {
+        if (!license || !license.code) {
+          const autoDemo = {
+            code: 'DEMO-5DAYS',
+            level: 'Level 1: 5-Day Demo',
+            demoClaimed: true,
+            activatedAt: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
+          };
+          if (typeof setLicense === 'function') {
+            setLicense(autoDemo);
+          }
+        }
+      }, []);
+
       const safeLicense = license || {
         level: 'Level 1: 5-Day Demo',
         code: 'DEMO-5DAYS',
         activatedAt: new Date().toISOString(),
         expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-        demoClaimed: false
+        demoClaimed: true
       };
 
       const now = new Date();
@@ -2295,20 +2311,14 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
         const code = inputKey.trim().toUpperCase();
         if (!code) return;
 
-        let newTier = null;
+        // PREVENT REPEATING PREVIOUS KEYS OR DEMO
         if (code === 'DEMO-5DAYS') {
-          if (safeLicense.demoClaimed && safeLicense.code !== 'DEMO-5DAYS') {
-            setStatusMsg({ type: 'error', text: 'The 5-Day Demo license has already been claimed on this workspace.' });
-            return;
-          }
-          newTier = {
-            code: 'DEMO-5DAYS',
-            level: 'Level 1: 5-Day Demo',
-            demoClaimed: true,
-            activatedAt: new Date().toISOString(),
-            expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
-          };
-        } else if (code.startsWith('GMEL-STD-') && code.length >= 12) {
+          setStatusMsg({ type: 'error', text: 'The 5-Day Demo has already been automatically claimed on this workspace.' });
+          return;
+        }
+
+        let newTier = null;
+        if (code.startsWith('GMEL-STD-') && code.length >= 12) {
           newTier = {
             code,
             level: 'Level 2: Standard Annual (1 Year)',
@@ -2325,7 +2335,7 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
             expiresAt: new Date(Date.now() + 3 * 365 * 24 * 60 * 60 * 1000).toISOString()
           };
         } else {
-          setStatusMsg({ type: 'error', text: 'Invalid license key format. Use GMEL-STD-XXXX, GMEL-ENT-XXXX, or DEMO-5DAYS.' });
+          setStatusMsg({ type: 'error', text: 'Invalid license key format. Use valid GMEL-STD-XXXX or GMEL-ENT-XXXX keys.' });
           return;
         }
 
@@ -2381,7 +2391,7 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
 
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
             <h3 className="text-lg font-extrabold text-slate-900">Activate or Upgrade License Key</h3>
-            <p className="text-sm text-slate-600">Enter an official GMEL activation key issued by [Enrich Data Tanzania](https://enrichdata-tanzania.github.io/gmel-system/) to extend your subscription.</p>
+            <p className="text-sm text-slate-600">Enter an official GMEL activation key issued by Enrich Data Tanzania to extend your subscription.</p>
 
             {statusMsg && (
               <div className={`p-4 rounded-xl text-sm font-bold border ${statusMsg.type === 'error' ? 'bg-red-50 text-red-800 border-red-200' : 'bg-emerald-50 text-emerald-800 border-emerald-200'}`}>
@@ -2402,25 +2412,55 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
                 type="submit"
                 className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-xl font-extrabold text-sm shadow transition shrink-0"
               >
-                Activate License
+                Activate Key
               </button>
             </form>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-200">
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                <span className="text-xs font-extrabold text-slate-500 uppercase">Tier 1</span>
-                <h4 className="font-extrabold text-slate-900">5-Day Trial Demo</h4>
-                <p className="text-xs text-slate-600">Full access to test forms, logframes, and Firebase sync for 5 days.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-200">
+              {/* TIER 2 UPGRADE BUTTON */}
+              <div className="p-5 rounded-2xl bg-indigo-50/70 border border-indigo-200 space-y-3 flex flex-col justify-between">
+                <div>
+                  <span className="text-xs font-extrabold text-indigo-600 uppercase">Tier 2 Plan</span>
+                  <h4 className="font-extrabold text-slate-900 text-lg">Standard Annual License</h4>
+                  <p className="text-xs text-slate-600 mt-1">365-day full organizational license with GIS mapping &amp; PDF exports.</p>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <a 
+                    href="mailto:info.enrichdata@gmail.com?subject=Request%20GMEL%20Standard%20License%20Key&body=Hello,%20I%20would%20like%20to%20request%20a%20Standard%20Annual%20License%20key%20for%20our%20workspace." 
+                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-2.5 px-4 rounded-xl text-xs text-center shadow transition"
+                  >
+                    Email Sales
+                  </a>
+                  <a 
+                    href="tel:+255758216364" 
+                    className="bg-white hover:bg-slate-100 text-indigo-900 border border-indigo-300 font-extrabold py-2.5 px-4 rounded-xl text-xs text-center shadow transition"
+                  >
+                    Call Support
+                  </a>
+                </div>
               </div>
-              <div className="p-4 rounded-xl bg-indigo-50/60 border border-indigo-200 space-y-1">
-                <span className="text-xs font-extrabold text-indigo-600 uppercase">Tier 2 (`GMEL-STD-...`)</span>
-                <h4 className="font-extrabold text-slate-900">Standard Annual</h4>
-                <p className="text-xs text-slate-600">365-day full organizational license with GIS mapping &amp; PDF exports.</p>
-              </div>
-              <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200 space-y-1">
-                <span className="text-xs font-extrabold text-emerald-700 uppercase">Tier 3 (`GMEL-ENT-...`)</span>
-                <h4 className="font-extrabold text-slate-900">Enterprise Multi-Year</h4>
-                <p className="text-xs text-slate-600">3-year enterprise deployment with priority support &amp; unlimited seats.</p>
+
+              {/* TIER 3 UPGRADE BUTTON */}
+              <div className="p-5 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-3 flex flex-col justify-between">
+                <div>
+                  <span className="text-xs font-extrabold text-emerald-700 uppercase">Tier 3 Plan</span>
+                  <h4 className="font-extrabold text-slate-900 text-lg">Enterprise Unlimited</h4>
+                  <p className="text-xs text-slate-600 mt-1">3-year enterprise deployment with priority support &amp; unlimited seats.</p>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <a 
+                    href="mailto:info.enrichdata@gmail.com?subject=Request%20GMEL%20Enterprise%20License%20Key&body=Hello,%20I%20would%20like%20to%20request%20an%20Enterprise%20License%20key%20for%20our%20workspace." 
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2.5 px-4 rounded-xl text-xs text-center shadow transition"
+                  >
+                    Email Sales
+                  </a>
+                  <a 
+                    href="tel:+255758216364" 
+                    className="bg-white hover:bg-slate-100 text-emerald-900 border border-emerald-300 font-extrabold py-2.5 px-4 rounded-xl text-xs text-center shadow transition"
+                  >
+                    Call Support
+                  </a>
+                </div>
               </div>
             </div>
           </div>
