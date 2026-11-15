@@ -350,26 +350,27 @@
                 <div className="flex items-center space-x-1 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700 text-xs font-bold text-slate-300">
                   <Shield className="h-4 w-4 text-indigo-400" />
                   <select 
-                    value={userRole} 
-                    onChange={(e) => {
-                      const selected = e.target.value;
-                      if (selected === 'Administrator' || selected === 'M&E Officer') {
-                        const pin = prompt(`Enter secure PIN to switch to ${selected}:`);
-                        if (pin === 'GMEL2026!') {
-                          setUserRole(selected);
-                        } else {
-                          alert('Incorrect security PIN! Access denied.');
-                        }
-                      } else {
-                        setUserRole(selected);
-                      }
-                    }}
-                    className="bg-transparent text-white font-bold focus:outline-none cursor-pointer"
-                  >
-                    <option value="Administrator" className="bg-slate-800">Role: Admin</option>
-                    <option value="M&E Officer" className="bg-slate-800">Role: M&amp;E Officer</option>
-                    <option value="Enumerator" className="bg-slate-800">Role: Enumerator</option>
-                  </select>
+  value={userRole} 
+  onChange={(e) => {
+    const selected = e.target.value;
+    if (selected === 'Administrator' || selected === 'M&E Officer') {
+      const pin = prompt(`Enter secure PIN to switch to ${selected}:`);
+      if (pin === 'GMEL2026!') {
+        setUserRole(selected);
+      } else {
+        alert('Incorrect security PIN! Access denied.');
+      }
+    } else {
+      setUserRole(selected);
+      setActiveTab('entry'); // Automatically lock to Data Submission view
+    }
+  }}
+  className="bg-transparent text-white font-bold focus:outline-none cursor-pointer"
+>
+  <option value="Administrator" className="bg-slate-800">Role: Admin</option>
+  <option value="M&E Officer" className="bg-slate-800">Role: M&amp;E Officer</option>
+  <option value="Enumerator" className="bg-slate-800">Role: Enumerator</option>
+</select>
                 </div>
 
                 <div className="project-picker flex items-center space-x-2 bg-slate-800 px-3.5 py-2 rounded-xl border border-slate-700 shadow-sm">
@@ -452,36 +453,43 @@
               </div>
             </div>
 
-            <div className="desktop-nav app-nav bg-slate-800 border-t border-slate-700 shadow-inner">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-2 overflow-x-auto">
-                {[
-                  { id: 'dashboard', label: 'Dashboard & Visuals', icon: BarChart3 },
-                  { id: 'logframe', label: 'Logframe Matrix', icon: TrendingUp },
-                  { id: 'map', label: 'GIS Map View', icon: MapIcon },
-                  { id: 'reports', label: 'Custom Reports', icon: FileText },
-                  ...(userRole !== 'Enumerator' ? [{ id: 'builder', label: 'Form Builder', icon: FileText }] : []),
-                  { id: 'entry', label: 'Data Submission', icon: ListCheck },
-                  { id: 'export', label: 'Export Suite', icon: Download },
-                  { id: 'print', label: 'Print Forms', icon: Printer }
-                ].map(tab => {
-                  const Icon = tab.icon;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`flex items-center space-x-2 px-5 py-3.5 text-base font-bold border-b-2 transition-all whitespace-nowrap ${
-                        activeTab === tab.id 
-                          ? 'border-indigo-500 text-indigo-300 bg-slate-900/90 shadow-sm' 
-                          : 'border-transparent text-slate-300 hover:text-white hover:bg-slate-700/60'
-                      }`}
-                    >
-                      <Icon className="h-5 w-5" />
-                      <span>{tab.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            {/* DESKTOP SUB-NAV TABS */}
+<div className="desktop-nav app-nav bg-slate-800 border-t border-slate-700 shadow-inner">
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-2 overflow-x-auto">
+    {(userRole === 'Enumerator'
+      ? [
+          { id: 'entry', label: 'Collect Data (Forms)', icon: ListCheck },
+          { id: 'mobile', label: 'Sync Records', icon: Smartphone }
+        ]
+      : [
+          { id: 'dashboard', label: 'Dashboard & Visuals', icon: BarChart3 },
+          { id: 'logframe', label: 'Logframe Matrix', icon: TrendingUp },
+          { id: 'map', label: 'GIS Map View', icon: MapIcon },
+          { id: 'reports', label: 'Custom Reports', icon: FileText },
+          { id: 'builder', label: 'Form Builder', icon: FileText },
+          { id: 'entry', label: 'Data Submission', icon: ListCheck },
+          { id: 'export', label: 'Export Suite', icon: Download },
+          { id: 'print', label: 'Print Forms', icon: Printer }
+        ]
+    ).map(tab => {
+      const Icon = tab.icon;
+      return (
+        <button
+          key={tab.id}
+          onClick={() => setActiveTab(tab.id)}
+          className={`flex items-center space-x-2 px-5 py-3.5 text-base font-bold border-b-2 transition-all whitespace-nowrap ${
+            activeTab === tab.id 
+              ? 'border-indigo-500 text-indigo-300 bg-slate-900/90 shadow-sm' 
+              : 'border-transparent text-slate-300 hover:text-white hover:bg-slate-700/60'
+          }`}
+        >
+          <Icon className="h-5 w-5" />
+          <span>{tab.label}</span>
+        </button>
+      );
+    })}
+  </div>
+</div>
           </header>
 
           <main className="app-main flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 print:p-0 bg-white text-base">
@@ -603,38 +611,44 @@
           </main>
 
           <nav className="mobile-nav print:hidden" aria-label="Main navigation">
-            {[
-              { id: 'dashboard', label: 'Home', icon: BarChart3 },
-              { id: 'logframe', label: 'Indicators', icon: TrendingUp },
-              { id: 'map', label: 'Map', icon: MapIcon },
-              { id: 'reports', label: 'Reports', icon: FileText },
-              { id: 'more', label: 'More', icon: MoreHorizontal }
-            ].map(item => {
-              const Icon = item.icon;
-              const selected = item.id === 'more'
-                ? showMobileMenu || ['builder', 'entry', 'export', 'mobile', 'guidelines', 'license'].includes(activeTab)
-                : activeTab === item.id;
+  {(userRole === 'Enumerator'
+    ? [
+        { id: 'entry', label: 'Collect Data', icon: ListCheck },
+        { id: 'mobile', label: 'Sync Cloud', icon: Smartphone }
+      ]
+    : [
+        { id: 'dashboard', label: 'Home', icon: BarChart3 },
+        { id: 'logframe', label: 'Indicators', icon: TrendingUp },
+        { id: 'map', label: 'Map', icon: MapIcon },
+        { id: 'reports', label: 'Reports', icon: FileText },
+        { id: 'more', label: 'More', icon: MoreHorizontal }
+      ]
+  ).map(item => {
+    const Icon = item.icon;
+    const selected = item.id === 'more'
+      ? showMobileMenu || ['builder', 'entry', 'export', 'mobile', 'guidelines', 'license'].includes(activeTab)
+      : activeTab === item.id;
 
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    if (item.id === 'more') {
-                      setShowMobileMenu(value => !value);
-                    } else {
-                      setActiveTab(item.id);
-                      setShowMobileMenu(false);
-                    }
-                  }}
-                  className={`mobile-nav-item${selected ? ' is-active' : ''}`}
-                >
-                  <Icon aria-hidden="true" />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
+    return (
+      <button
+        key={item.id}
+        type="button"
+        onClick={() => {
+          if (item.id === 'more') {
+            setShowMobileMenu(value => !value);
+          } else {
+            setActiveTab(item.id);
+            setShowMobileMenu(false);
+          }
+        }}
+        className={`mobile-nav-item${selected ? ' is-active' : ''}`}
+      >
+        <Icon aria-hidden="true" />
+        <span>{item.label}</span>
+      </button>
+    );
+  })}
+</nav>
           {showMobileMenu && (
             <div className="mobile-more-menu print:hidden">
               {[
