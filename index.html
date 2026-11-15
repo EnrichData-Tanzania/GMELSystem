@@ -2273,8 +2273,153 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
         </div>
       );
     }
-    function LicenseActivationView({ license, setLicense, isGateway = false }) {
-      return <div className="p-6">License View</div>;
+    function LicenseView({ license, setLicense }) {
+      const [inputKey, setInputKey] = useState('');
+      const [statusMsg, setStatusMsg] = useState(null);
+
+      const now = new Date();
+      const expiresDate = license.expiresAt ? new Date(license.expiresAt) : new Date();
+      const isExpired = now > expiresDate;
+      const daysRemaining = Math.max(0, Math.ceil((expiresDate - now) / (1000 * 60 * 60 * 24)));
+
+      // Built-in License Key Validator & Tier Provisioner
+      const handleActivateKey = (e) => {
+        e.preventDefault();
+        const code = inputKey.trim().toUpperCase();
+        if (!code) return;
+
+        let newTier = null;
+        if (code === 'DEMO-5DAYS') {
+          if (license.demoClaimed && license.code !== 'DEMO-5DAYS') {
+            setStatusMsg({ type: 'error', text: 'The 5-Day Demo license has already been claimed on this workspace.' });
+            return;
+          }
+          newTier = {
+            code: 'DEMO-5DAYS',
+            level: 'Level 1: 5-Day Demo',
+            demoClaimed: true,
+            activatedAt: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
+          };
+        } else if (code.startsWith('GMEL-STD-') && code.length >= 12) {
+          newTier = {
+            code,
+            level: 'Level 2: Standard Annual (1 Year)',
+            demoClaimed: true,
+            activatedAt: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+          };
+        } else if (code.startsWith('GMEL-ENT-') && code.length >= 12) {
+          newTier = {
+            code,
+            level: 'Level 3: Enterprise Unlimited (3 Years)',
+            demoClaimed: true,
+            activatedAt: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 3 * 365 * 24 * 60 * 60 * 1000).toISOString()
+          };
+        } else {
+          setStatusMsg({ type: 'error', text: 'Invalid license key format. Use GMEL-STD-XXXX, GMEL-ENT-XXXX, or DEMO-5DAYS.' });
+          return;
+        }
+
+        setLicense(newTier);
+        setInputKey('');
+        setStatusMsg({ type: 'success', text: `Successfully activated ${newTier.level}! Synced to Firebase.` });
+      };
+
+      return (
+        <div className="space-y-6 text-base max-w-4xl mx-auto">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h2 className="text-2xl font-black text-slate-900">GMEL System License &amp; Subscription</h2>
+              <p className="text-base text-slate-600 mt-1">Manage workspace activation keys, tier entitlements, and renewal status.</p>
+            </div>
+            <span className={`px-4 py-2 rounded-xl text-sm font-extrabold border ${isExpired ? 'bg-red-100 text-red-800 border-red-300' : 'bg-emerald-100 text-emerald-800 border-emerald-300'}`}>
+              {isExpired ? 'Status: Expired' : `Active · ${daysRemaining} Days Left`}
+            </span>
+          </div>
+
+          {/* CURRENT ACTIVE LICENSE CARD */}
+          <div className="bg-slate-900 text-white p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-800 space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-5">
+              <div>
+                <span className="text-xs font-extrabold uppercase tracking-wider text-indigo-400">Current Workspace Entitlement</span>
+                <h3 className="text-2xl font-black mt-1">{license.level || 'Level 1: 5-Day Demo'}</h3>
+              </div>
+              <div className="bg-slate-800 px-4 py-2.5 rounded-xl border border-slate-700 font-mono text-sm">
+                Key: <strong className="text-emerald-400">{license.code}</strong>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+              <div className="bg-slate-800/70 p-4 rounded-xl border border-slate-700/80">
+                <span className="text-slate-400 block text-xs uppercase font-bold">Activated On</span>
+                <strong className="text-base font-mono mt-1 block">
+                  {license.activatedAt ? new Date(license.activatedAt).toLocaleDateString() : 'N/A'}
+                </strong>
+              </div>
+              <div className="bg-slate-800/70 p-4 rounded-xl border border-slate-700/80">
+                <span className="text-slate-400 block text-xs uppercase font-bold">Expiration Date</span>
+                <strong className={`text-base font-mono mt-1 block ${isExpired ? 'text-red-400' : 'text-white'}`}>
+                  {license.expiresAt ? new Date(license.expiresAt).toLocaleDateString() : 'N/A'}
+                </strong>
+              </div>
+              <div className="bg-slate-800/70 p-4 rounded-xl border border-slate-700/80">
+                <span className="text-slate-400 block text-xs uppercase font-bold">Cloud Sync &amp; Projects</span>
+                <strong className="text-base text-indigo-300 mt-1 block">Unlimited Projects &amp; Forms</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* ACTIVATE / UPGRADE LICENSE KEY FORM */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+            <h3 className="text-lg font-extrabold text-slate-900">Activate or Upgrade License Key</h3>
+            <p className="text-sm text-slate-600">Enter an official GMEL activation key issued by Enrich Data Tanzania to extend your subscription.</p>
+
+            {statusMsg && (
+              <div className={`p-4 rounded-xl text-sm font-bold border ${statusMsg.type === 'error' ? 'bg-red-50 text-red-800 border-red-200' : 'bg-emerald-50 text-emerald-800 border-emerald-200'}`}>
+                {statusMsg.text}
+              </div>
+            )}
+
+            <form onSubmit={handleActivateKey} className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                required
+                placeholder="e.g. GMEL-STD-2026-XXXX or GMEL-ENT-2026-XXXX"
+                value={inputKey}
+                onChange={(e) => setInputKey(e.target.value)}
+                className="flex-1 border border-slate-300 rounded-xl p-3.5 font-mono font-bold uppercase text-slate-900 focus:outline-none focus:border-indigo-600"
+              />
+              <button
+                type="submit"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-xl font-extrabold text-sm shadow transition shrink-0"
+              >
+                Activate License
+              </button>
+            </form>
+
+            {/* AVAILABLE TIERS REFERENCE */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-200">
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                <span className="text-xs font-extrabold text-slate-500 uppercase">Tier 1</span>
+                <h4 className="font-extrabold text-slate-900">5-Day Trial Demo</h4>
+                <p className="text-xs text-slate-600">Full access to test forms, logframes, and Firebase sync for 5 days.</p>
+              </div>
+              <div className="p-4 rounded-xl bg-indigo-50/60 border border-indigo-200 space-y-1">
+                <span className="text-xs font-extrabold text-indigo-600 uppercase">Tier 2 (`GMEL-STD-...`)</span>
+                <h4 className="font-extrabold text-slate-900">Standard Annual</h4>
+                <p className="text-xs text-slate-600">365-day full organizational license with GIS mapping &amp; PDF exports.</p>
+              </div>
+              <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200 space-y-1">
+                <span className="text-xs font-extrabold text-emerald-700 uppercase">Tier 3 (`GMEL-ENT-...`)</span>
+                <h4 className="font-extrabold text-slate-900">Enterprise Multi-Year</h4>
+                <p className="text-xs text-slate-600">3-year enterprise deployment with priority support &amp; unlimited seats.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
     }
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
