@@ -1448,7 +1448,7 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
           })
         }));
       };
-
+    }
       const handleSaveIndicator = () => {
         if (!newInd.title.trim()) return;
         const baseTotal = (Number(newInd.baseline.general) || 0) + (Number(newInd.baseline.male) || 0) + (Number(newInd.baseline.female) || 0);
