@@ -1423,19 +1423,32 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
 
       const handleSaveIndicator = () => {
         if (!newInd.title.trim()) return;
-        const baseTotal = (Number(newInd.baseline.general) || 0) + (Number(newInd.baseline.male) || 0) + (Number(newInd.baseline.female) || 0);
-        const targetTotal = (Number(newInd.target.general) || 0) + (Number(newInd.target.male) || 0) + (Number(newInd.target.female) || 0);
+
+        // Automatically sum up disaggregated values for baseline and target
+        const baseGen = Number(newInd.baseline.general) || 0;
+        const baseMale = Number(newInd.baseline.male) || 0;
+        const baseFemale = Number(newInd.baseline.female) || 0;
+        const baseTotal = (baseMale > 0 || baseFemale > 0) ? (baseMale + baseFemale) : baseGen;
+
+        const targetGen = Number(newInd.target.general) || 0;
+        const targetMale = Number(newInd.target.male) || 0;
+        const targetFemale = Number(newInd.target.female) || 0;
+        const targetTotal = (targetMale > 0 || targetFemale > 0) ? (targetMale + targetFemale) : targetGen;
+
+        const indicatorPayload = {
+          ...newInd,
+          baseline: { general: baseGen, male: baseMale, female: baseFemale, total: baseTotal },
+          target: { general: targetGen, male: targetMale, female: targetFemale, total: targetTotal }
+        };
 
         if (editingIndId) {
           setProjects(prev => prev.map(p => p.id !== project.id ? p : {
             ...p,
-            indicators: p.indicators.map(ind => ind.id === editingIndId ? { ...newInd, id: editingIndId } : ind)
+            indicators: p.indicators.map(ind => ind.id === editingIndId ? { ...indicatorPayload, id: editingIndId } : ind)
           }));
         } else {
           const indicatorObj = { 
-            ...newInd, 
-            baseline: { ...newInd.baseline, total: baseTotal || newInd.baseline.general },
-            target: { ...newInd.target, total: targetTotal || newInd.target.general },
+            ...indicatorPayload,
             id: createId('ind')
           };
           setProjects(prev => prev.map(p => p.id !== project.id ? p : { ...p, indicators: [...p.indicators, indicatorObj] }));
