@@ -330,7 +330,7 @@
       }
 
       return (
-        <div className="app-shell min-h-screen bg-white text-slate-900 flex flex-col font-sans text-base border-t-4 border-indigo-600">
+        <div className="app-shell min-h-screen bg-white text-slate-900 flex flex-col font-sans text-sm sm:text-base border-t-4 border-indigo-600">
           <header className="app-header bg-slate-900 text-white shadow-lg sticky top-0 z-50 print:hidden">
             <div className="header-inner max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-20">
               <div className="brand flex items-center space-x-3">
@@ -458,41 +458,35 @@
 
             {/* DESKTOP SUB-NAV TABS */}
 <div className="desktop-nav app-nav bg-slate-800 border-t border-slate-700 shadow-inner">
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-2 overflow-x-auto">
-    {(userRole === 'Enumerator'
-      ? [
-          { id: 'entry', label: 'Collect Data (Forms)', icon: ListCheck },
-          { id: 'mobile', label: 'Sync Records', icon: Smartphone }
-        ]
-      : [
-          { id: 'dashboard', label: 'Dashboard & Visuals', icon: BarChart3 },
-          { id: 'logframe', label: 'Logframe Matrix', icon: TrendingUp },
-          { id: 'map', label: 'GIS Map View', icon: MapIcon },
-          { id: 'reports', label: 'Custom Reports', icon: FileText },
-          { id: 'builder', label: 'Form Builder', icon: FileText },
-          { id: 'entry', label: 'Data Submission', icon: ListCheck },
-          { id: 'export', label: 'Export Suite', icon: Download },
-          { id: 'print', label: 'Print Forms', icon: Printer }
-        ]
-    ).map(tab => {
-      const Icon = tab.icon;
-      return (
-        <button
-          key={tab.id}
-          onClick={() => setActiveTab(tab.id)}
-          className={`flex items-center space-x-2 px-5 py-3.5 text-base font-bold border-b-2 transition-all whitespace-nowrap ${
-            activeTab === tab.id 
-              ? 'border-indigo-500 text-indigo-300 bg-slate-900/90 shadow-sm' 
-              : 'border-transparent text-slate-300 hover:text-white hover:bg-slate-700/60'
-          }`}
-        >
-          <Icon className="h-5 w-5" />
-          <span>{tab.label}</span>
-        </button>
-      );
-    })}
-  </div>
-</div>
+              <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 flex flex-wrap items-center justify-center sm:justify-start gap-1 py-2">
+                {[
+                  { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+                  { id: 'logframe', label: 'Logframe', icon: TrendingUp },
+                  { id: 'map', label: 'GIS Map', icon: MapIcon },
+                  { id: 'reports', label: 'Reports', icon: FileText },
+                  ...(userRole !== 'Enumerator' ? [{ id: 'builder', label: 'Form Builder', icon: FileText }] : []),
+                  { id: 'entry', label: 'Submission', icon: ListCheck },
+                  { id: 'export', label: 'Export Suite', icon: Download },
+                  { id: 'print', label: 'Print Forms', icon: Printer }
+                ].map(tab => {
+                  const Icon = tab.icon;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`flex items-center space-x-1.5 px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
+                        activeTab === tab.id 
+                          ? 'bg-indigo-600 text-white shadow-sm' 
+                          : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
+                      }`}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </header>
 
           <main className="app-main flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 print:p-0 bg-white text-base">
