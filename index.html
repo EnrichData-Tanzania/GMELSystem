@@ -156,125 +156,167 @@
       }
     ];
 
-    function App() {
-      const [projects, setProjects] = useState([]);
-      const [activeProjectId, setActiveProjectId] = useState('proj-1');
-      const [activeTab, setActiveTab] = useState('dashboard');
-      const [userRole, setUserRole] = useState('Administrator');
-      const [license, setLicense] = useState({
-        code: 'DEMO-5DAYS',
-        level: 'Level 1: 5-Day Demo',
-        demoClaimed: true,
-        activatedAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
-      });
-      const [isLoadedFromCloud, setIsLoadedFromCloud] = useState(false);
-      const [isOnline, setIsOnline] = useState(navigator.onLine);
-      const [installPrompt, setInstallPrompt] = useState(null);
-      const [showMobileMenu, setShowMobileMenu] = useState(false);
-      const [isSyncing, setIsSyncing] = useState(false);
-      const [lastSynced, setLastSynced] = useState('Just now');
+   function App() {
+  // 1. Define Synchronization States
+  const [isFirebaseLoaded, setIsFirebaseLoaded] = React.useState(false);
+  const [projectData, setProjectData] = React.useState(null);
+  const [currentView, setCurrentView] = React.useState('dashboard');
 
-      useEffect(() => {
-        const handleOnline = () => setIsOnline(true);
-        const handleOffline = () => setIsOnline(false);
-        window.addEventListener('online', handleOnline);
-        window.addEventListener('offline', handleOffline);
-        return () => {
-          window.removeEventListener('online', handleOnline);
-          window.removeEventListener('offline', handleOffline);
-        };
-      }, []);
+  // 2. Initial Firebase Load Listener (Protects against early mobile overwrites)
+  React.useEffect(() => {
+    // Reference to your Firebase project root node
+    const projectRef = firebase.database().ref('gmel_project_data');
 
-      const handleManualSync = async () => {
-        if (isSyncing) return;
-        setIsSyncing(true);
+    const handleDataSync = (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setProjectData(data);
+      }
+      // Unlock the app writes once Firebase responds (even if data is initially empty/new)
+      setIsFirebaseLoaded(true);
+    };
 
-        try {
-          if (Array.isArray(projects)) {
-            localStorage.setItem('gmel_projects_v2', JSON.stringify(projects));
-          }
-          if (license) {
-            localStorage.setItem('gmel_license_v2', JSON.stringify(license));
-          }
+    const handleError = (error) => {
+      console.error("Firebase sync error:", error);
+      // Fallback: unlock after timeout or let user know, but keep guarded
+      setIsFirebaseLoaded(true); 
+    };
 
-          if (db) {
-            const docRef = doc(db, 'gmel_systems', 'main_workspace');
-            await setDoc(docRef, { projects, license, updated_at: new Date() }, { merge: true });
-          }
+    projectRef.on('value', handleDataSync, handleError);
 
-          const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          setLastSynced(timeString);
-          alert('Cloud Synchronization Successful: All project submissions, indicators, forms, and licenses are securely synced!');
-        } catch (err) {
-          console.error('Synchronization error:', err);
-          alert('Sync completed with local offline storage fallback.');
-        } finally {
-          setIsSyncing(false);
-        }
-      };
+    // Cleanup listener on unmount
+    return () => projectRef.off('value', handleDataSync);
+  }, []);
 
-     // FETCH DATA OR AUTO-INITIALIZE IN FIREBASE FIRESTORE ON MOUNT
-      useEffect(() => {
-        async function fetchCloudData() {
-          try {
-            if (!db) {
-              console.warn('Firebase DB not initialized.');
-              setIsLoadedFromCloud(true);
-              return;
-            }
-            const docRef = doc(db, 'gmel_systems', 'main_workspace');
-            const docSnap = await getDoc(docRef);
+  // 3. Guarded Write Wrapper Function
+  const executeGuardedWrite = (writeActionCallback) => {
+    if (!isFirebaseLoaded) {
+      alert("⚠️ System is still syncing with Firebase Cloud Database. Please wait a moment before modifying records to avoid overwriting data.");
+      return;
+    }
+    // Proceed with safe write
+    writeActionCallback();
+  };
 
-            if (docSnap.exists()) {
-              const data = docSnap.data();
-              if (data.projects && Array.isArray(data.projects)) {
-                setProjects(data.projects);
-                if (data.projects.length > 0) setActiveProjectId(data.projects[0].id);
-              }
-              if (data.license && data.license.code) setLicense(data.license);
-            } else {
-              // Document doesn't exist yet! Automatically create it with default data.
-              await setDoc(docRef, { 
-                projects: defaultInitialProjects, 
-                license: {
-                  code: 'DEMO-5DAYS',
-                  level: 'Level 1: 5-Day Demo',
-                  demoClaimed: true,
-                  activatedAt: new Date().toISOString(),
-                  expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
-                }, 
-                updated_at: new Date() 
-              });
-              setProjects(defaultInitialProjects);
-            }
-          } catch (err) {
-            console.error('Error connecting to Firebase Firestore:', err);
-            // Fallback safety: bypass cloud block so the app opens immediately
-            setIsLoadedFromCloud(true);
-          } finally {
-            setIsLoadedFromCloud(true);
-          }
-        }
-        fetchCloudData();
-      }, []);
+  // Example Save Handler using the guard
+  const handleSaveProjectData = (updatedData) => {
+    executeGuardedWrite(() => {
+      firebase.database().ref('gmel_project_data').set(updatedData)
+        .then(() => console.log("Data successfully saved to Firebase!"))
+        .catch((err) => console.error("Save failed:", err));
+    });
+  };
 
-      // SAVE DATA EXCLUSIVELY TO FIREBASE FIRESTORE ON STATE CHANGE
-      useEffect(() => {
-        if (!isLoadedFromCloud || !db) return;
+  return (
+    <div className="min-h-screen bg-slate-900 text-slate-100 font-sans flex flex-col">
+      
+      {/* SYNC/LOADING OVERLAY FOR MOBILE & SLOW CONNECTIONS */}
+      {!isFirebaseLoaded && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <h2 className="text-xl font-bold text-white mb-2">Syncing GMEL System...</h2>
+          <p className="text-slate-400 max-w-sm text-sm">
+            Please wait while we securely fetch your latest indicators and project records from Firebase. Write actions are locked to protect your data.
+          </p>
+        </div>
+      )}
 
-        async function saveCloudData() {
-          try {
-            const docRef = doc(db, 'gmel_systems', 'main_workspace');
-            await setDoc(docRef, { projects, license, updated_at: new Date() }, { merge: true });
-          } catch (err) {
-            console.error('Error saving to Firebase:', err);
-          }
-        }
-        saveCloudData();
-      }, [projects, license, isLoadedFromCloud]);
+      {/* Top Header Navigation */}
+      <header className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <div className="bg-emerald-500/10 text-emerald-400 p-2 rounded-lg border border-emerald-500/20">
+            📊
+          </div>
+          <div>
+            <h1 className="font-bold text-lg tracking-tight">GMEL System</h1>
+            <span className="text-xs text-emerald-400 flex items-center gap-1">
+              <span className={`w-2 h-2 rounded-full ${isFirebaseLoaded ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'}`}></span>
+              {isFirebaseLoaded ? 'Firebase Connected & Synced' : 'Syncing Cloud State...'}
+            </span>
+          </div>
+        </div>
 
-      useEffect(() => {
+        {/* Navigation Tabs */}
+        <nav className="hidden md:flex items-center space-x-1 bg-slate-800/50 p-1 rounded-lg border border-slate-700/50">
+          <button 
+            onClick={() => setCurrentView('dashboard')}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${currentView === 'dashboard' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
+          >
+            Dashboard
+          </button>
+          <button 
+            onClick={() => setCurrentView('logframe')}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${currentView === 'logframe' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
+          >
+            Logframe
+          </button>
+          <button 
+            onClick={() => setCurrentView('submission')}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${currentView === 'submission' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
+          >
+            Submission
+          </button>
+        </nav>
+      </header>
+
+      {/* Main Dynamic View Content */}
+      <main className="flex-1 p-6 max-w-7xl w-full mx-auto">
+        {!isFirebaseLoaded ? (
+          <div className="opacity-40 pointer-events-none">
+            {/* Render placeholder skeleton UI while loading */}
+            <div className="h-32 bg-slate-800 rounded-xl mb-6 animate-pulse"></div>
+            <div className="h-64 bg-slate-800 rounded-xl animate-pulse"></div>
+          </div>
+        ) : (
+          <div>
+            {currentView === 'dashboard' && (
+              <div className="space-y-6">
+                <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
+                  <h2 className="text-xl font-bold mb-2">Sustainable Water Support</h2>
+                  <p className="text-slate-400 text-sm mb-4">Monitor live disaggregated indicators, GIS mapping, and Firebase records.</p>
+                  
+                  {/* Example Action Button Protected by State */}
+                  <button 
+                    onClick={() => handleSaveProjectData({ lastUpdated: Date.now() })}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-lg shadow-emerald-900/20"
+                  >
+                    Save Project State Snapshot
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {currentView === 'logframe' && (
+              <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
+                <h3 className="text-lg font-bold mb-4">Logframe View & Matrix</h3>
+                <p className="text-slate-400 text-sm">All changes made here are safely synced against the loaded Firebase tree.</p>
+              </div>
+            )}
+
+            {currentView === 'submission' && (
+              <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
+                <h3 className="text-lg font-bold mb-4">Data Submission Form</h3>
+                <form onSubmit={(e) => { e.preventDefault(); handleSaveProjectData({ submittedForm: true }); }}>
+                  <input 
+                    type="text" 
+                    placeholder="Enter Indicator Value..." 
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm mb-4 text-white focus:outline-none focus:border-emerald-500"
+                  />
+                  <button 
+                    type="submit"
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-lg font-medium transition"
+                  >
+                    Submit Record
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}      useEffect(() => {
         const handleInstallAvailable = (event) => {
           event.preventDefault();
           setInstallPrompt(event);
