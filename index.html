@@ -1911,7 +1911,9 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
       ];
 
       const handleAddField = (type) => {
-        const needsOptions = type === 'select' || type === 'checkbox';
+        const needsOptions = type === 'select' || type === 'checkbox' || type === 'rating';
+        const defaultOptions = type === 'rating' ? ['1', '2', '3', '4', '5'] : ['Option 1', 'Option 2'];
+        
         setFields([
           ...fields, 
           { 
@@ -1919,7 +1921,7 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
             label: '', 
             type, 
             required: true, 
-            options: needsOptions ? ['Option 1', 'Option 2'] : [], 
+            options: needsOptions ? defaultOptions : [], 
             skipLogic: '' 
           }
         ]);
@@ -1960,6 +1962,12 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
       const handleSaveForm = () => {
         if (!formTitle.trim()) {
           alert('Please enter a form title.');
+          return;
+        }
+
+        const hasEmptyLabel = fields.some(f => !f.label || !f.label.trim());
+        if (hasEmptyLabel) {
+          alert('Please fill in the question label for all questions before publishing.');
           return;
         }
 
@@ -2026,7 +2034,7 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
               <h4 className="font-extrabold text-slate-800">Form Questions ({fields.length})</h4>
               {fields.map((field, idx) => (
                 <div key={field.id} className="p-4 bg-slate-50 border rounded-xl space-y-3">
-                  <div className="flex gap-3 items-center">
+                  <div className="flex flex-wrap gap-3 items-center">
                     <span className="text-xs font-mono font-black text-slate-400">Q{idx + 1}</span>
                     <input 
                       type="text" 
@@ -2037,9 +2045,27 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
                         updated[idx].label = e.target.value; 
                         setFields(updated);
                       }} 
-                      className="flex-1 border rounded-lg p-2.5 font-bold bg-white" 
+                      className="flex-1 min-w-[200px] border rounded-lg p-2.5 font-bold bg-white" 
                     />
-                    <span className="px-3 py-2 bg-indigo-100 text-indigo-800 font-bold rounded-lg text-xs uppercase">{field.type}</span>
+
+                    <label className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-extrabold text-slate-700 cursor-pointer select-none hover:bg-slate-100">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(field.required)}
+                        onChange={(e) => {
+                          const updated = [...fields];
+                          updated[idx].required = e.target.checked;
+                          setFields(updated);
+                        }}
+                        className="h-4 w-4 text-indigo-600 rounded border-slate-300 cursor-pointer"
+                      />
+                      <span>Mandatory</span>
+                    </label>
+
+                    <span className={`px-3 py-2 font-bold rounded-lg text-xs uppercase ${field.type === 'location' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-indigo-100 text-indigo-800'}`}>
+                      {field.type}
+                    </span>
+
                     <button 
                       onClick={() => handleRemoveField(idx)} 
                       className="p-2 text-red-600 hover:bg-red-50 rounded-lg border border-red-200"
@@ -2049,36 +2075,55 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
                     </button>
                   </div>
 
-                  {(field.type === 'select' || field.type === 'checkbox') && (
-                    <div className="flex gap-2 items-center text-sm pl-6">
-                      <label className="font-bold text-slate-600">Choices (comma-separated):</label>
+                  {/* CHOICES CONFIGURATION FOR SELECT, CHECKBOX, AND RATING */}
+                  {(field.type === 'select' || field.type === 'checkbox' || field.type === 'rating') && (
+                    <div className="flex gap-2 items-center text-sm pl-6 bg-white p-3 rounded-lg border border-slate-200">
+                      <label className="font-bold text-slate-600 text-xs uppercase">
+                        {field.type === 'rating' ? 'Rating Scale Options:' : 'Choices (comma-separated):'}
+                      </label>
                       <input 
                         type="text" 
-                        placeholder="Option 1, Option 2, Option 3" 
+                        placeholder={field.type === 'rating' ? "1, 2, 3, 4, 5" : "Option 1, Option 2, Option 3"} 
                         value={(field.options || []).join(', ')} 
                         onChange={(e) => {
                           const updated = [...fields];
                           updated[idx].options = e.target.value.split(',').map(o => o.trim());
                           setFields(updated);
                         }} 
-                        className="flex-1 border rounded-lg p-2 font-bold bg-white" 
+                        className="flex-1 border rounded-lg p-2 font-bold bg-slate-50 text-xs" 
                       />
                     </div>
                   )}
 
+                  {/* GPS LOCATION NOTICE */}
+                  {field.type === 'location' && (
+                    <div className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 flex items-center gap-1.5 pl-6">
+                      📍 <span className="underline">Auto-GPS Coordinate Capture Enabled:</span> Enumerators can tap "Capture GPS" to automatically fetch device latitude and longitude.
+                    </div>
+                  )}
+
+                  {/* SELECT-BASED SKIP LOGIC */}
                   <div className="flex gap-2 items-center text-sm pl-6">
-                    <label className="font-bold text-slate-600">Skip Logic Trigger:</label>
-                    <input 
-                      type="text" 
-                      placeholder="e.g. If Answer == 'No', skip to Q5" 
-                      value={field.skipLogic || ''} 
+                    <label className="font-bold text-slate-600 text-xs uppercase">Skip Logic:</label>
+                    <select
+                      value={field.skipLogic || ''}
                       onChange={(e) => {
-                        const updated = [...fields]; 
-                        updated[idx].skipLogic = e.target.value; 
+                        const updated = [...fields];
+                        updated[idx].skipLogic = e.target.value;
                         setFields(updated);
-                      }} 
-                      className="flex-1 border rounded-lg p-2 font-bold bg-white" 
-                    />
+                      }}
+                      className="flex-1 text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg p-2 outline-none cursor-pointer"
+                    >
+                      <option value="">Normal (No Skip)</option>
+                      {fields.map((targetField, tIdx) => {
+                        if (tIdx <= idx) return null;
+                        return (
+                          <option key={targetField.id} value={`Q${tIdx + 1}`}>
+                            Skip to Q{tIdx + 1} ({targetField.label || `Question ${tIdx + 1}`})
+                          </option>
+                        );
+                      })}
+                    </select>
                   </div>
                 </div>
               ))}
