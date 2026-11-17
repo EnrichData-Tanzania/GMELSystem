@@ -2069,24 +2069,36 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
                       </button>
                     </div>
 
-                    {/* GPS Location Auto-fetch notice or Skip Logic */}
-                    <div className="flex flex-col sm:flex-row gap-3 pt-1">
+                    {/* GPS NOTICE & SELECT-BASED SKIP LOGIC */}
+                    <div className="flex flex-col sm:flex-row gap-3 items-center pt-1">
                       {field.type === 'GPS Location' && (
                         <div className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 flex items-center gap-1.5">
-                          📍 <span className="underline">Auto-GPS Enabled:</span> Enumerators can tap "Capture GPS" to automatically fetch device latitude and longitude coordinates.
+                          📍 <span className="underline">Auto-GPS Enabled</span>
                         </div>
                       )}
-                      <input 
-                        type="text" 
-                        placeholder="Skip Logic Trigger: e.g. If Answer == 'No', skip to Q5" 
-                        value={field.skipLogic || ''} 
-                        onChange={(e) => {
-                          const updated = [...fields];
-                          updated[idx].skipLogic = e.target.value;
-                          setFields(updated);
-                        }}
-                        className="flex-1 text-xs border border-slate-200 rounded-lg p-2 bg-white font-mono text-slate-600" 
-                      />
+                      
+                      <div className="flex items-center gap-2 w-full sm:w-auto ml-auto bg-white border border-slate-200 px-3 py-1.5 rounded-lg">
+                        <span className="text-xs font-extrabold text-slate-500 uppercase">Skip Logic:</span>
+                        <select
+                          value={field.skipLogic || ''}
+                          onChange={(e) => {
+                            const updated = [...fields];
+                            updated[idx].skipLogic = e.target.value;
+                            setFields(updated);
+                          }}
+                          className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-md p-1 outline-none cursor-pointer"
+                        >
+                          <option value="">Normal (No Skip)</option>
+                          {fields.map((targetField, tIdx) => {
+                            if (tIdx <= idx) return null; // Can only skip forward
+                            return (
+                              <option key={targetField.id} value={`Q${tIdx + 1}`}>
+                                Skip to Q{tIdx + 1} ({targetField.label || `Question ${tIdx + 1}`})
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </div>
                     </div>
                   </div>
                 ))}
