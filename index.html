@@ -1894,7 +1894,7 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
       const [formTitle, setFormTitle] = useState('');
       const [formDesc, setFormDesc] = useState('');
       const [fields, setFields] = useState([
-        { id: 'f1', label: 'Beneficiary Full Name', type: 'Short Text', required: true, skipLogic: '' }
+        { id: 'f1', label: 'Beneficiary Full Name', type: 'Short Text', required: true, skipLogic: '', options: [] }
       ]);
       const [editingFormId, setEditingFormId] = useState(null);
 
@@ -1904,7 +1904,8 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
           label: '',
           type: type,
           required: false,
-          skipLogic: ''
+          skipLogic: '',
+          options: (type === 'Dropdown' || type === 'Multi-Select') ? ['Option 1', 'Option 2'] : []
         };
         setFields(prev => [...prev, newField]);
       };
@@ -1932,7 +1933,7 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
       const resetBuilder = () => {
         setFormTitle('');
         setFormDesc('');
-        setFields([{ id: 'f1', label: 'Beneficiary Full Name', type: 'Short Text', required: true, skipLogic: '' }]);
+        setFields([{ id: 'f1', label: 'Beneficiary Full Name', type: 'Short Text', required: true, skipLogic: '', options: [] }]);
         setEditingFormId(null);
       };
 
@@ -2069,6 +2070,54 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
                       </button>
                     </div>
 
+                    {/* OPTIONS CONFIGURATION FOR DROPDOWN / MULTI-SELECT */}
+                    {(field.type === 'Dropdown' || field.type === 'Multi-Select') && (
+                      <div className="bg-white p-3 rounded-lg border border-slate-200 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-extrabold uppercase text-indigo-600">Configure Choices ({field.options?.length || 0})</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = [...fields];
+                              if (!updated[idx].options) updated[idx].options = [];
+                              updated[idx].options.push(`Option ${updated[idx].options.length + 1}`);
+                              setFields(updated);
+                            }}
+                            className="text-xs font-bold text-indigo-600 hover:underline"
+                          >
+                            + Add Option
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {(field.options || []).map((opt, oIdx) => (
+                            <div key={oIdx} className="flex items-center gap-1 bg-slate-100 px-2.5 py-1 rounded-md border">
+                              <input
+                                type="text"
+                                value={opt}
+                                onChange={(e) => {
+                                  const updated = [...fields];
+                                  updated[idx].options[oIdx] = e.target.value;
+                                  setFields(updated);
+                                }}
+                                className="text-xs font-bold bg-transparent outline-none w-28"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = [...fields];
+                                  updated[idx].options = updated[idx].options.filter((_, i) => i !== oIdx);
+                                  setFields(updated);
+                                }}
+                                className="text-red-500 font-bold text-xs px-1"
+                              >
+                                &times;
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* GPS NOTICE & SELECT-BASED SKIP LOGIC */}
                     <div className="flex flex-col sm:flex-row gap-3 items-center pt-1">
                       {field.type === 'GPS Location' && (
@@ -2090,7 +2139,7 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
                         >
                           <option value="">Normal (No Skip)</option>
                           {fields.map((targetField, tIdx) => {
-                            if (tIdx <= idx) return null; // Can only skip forward
+                            if (tIdx <= idx) return null;
                             return (
                               <option key={targetField.id} value={`Q${tIdx + 1}`}>
                                 Skip to Q{tIdx + 1} ({targetField.label || `Question ${tIdx + 1}`})
