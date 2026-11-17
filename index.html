@@ -1445,9 +1445,12 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
         baseline: { general: 0, male: 0, female: 0, total: 0 },
         target: { general: 100, male: 50, female: 50, total: 100 },
         unit: 'Units',
+        customUnit: '',
         mapping: { generalFieldId: '', maleFieldId: '', femaleFieldId: '' },
         calcType: 'SUM'
       });
+
+      const STANDARD_UNITS = ['Units', '%', 'People', 'Households', 'Water Points', 'Trainings', 'USD', 'TZS'];
 
       const handleSaveIndicator = () => {
         if (!newInd.title.trim()) return;
@@ -1463,8 +1466,15 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
         const targetFemale = Number(newInd.target.female) || 0;
         const targetTotal = (targetMale > 0 || targetFemale > 0) ? (targetMale + targetFemale) : targetGen;
 
+        const resolvedUnit = newInd.unit === 'CUSTOM' 
+          ? (newInd.customUnit?.trim() || 'Units') 
+          : (newInd.unit || 'Units');
+
+        const { customUnit, ...restInd } = newInd;
+
         const indicatorPayload = {
-          ...newInd,
+          ...restInd,
+          unit: resolvedUnit,
           baseline: { general: baseGen, male: baseMale, female: baseFemale, total: baseTotal },
           target: { general: targetGen, male: targetMale, female: targetFemale, total: targetTotal }
         };
@@ -1484,17 +1494,20 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
 
         setShowAddModal(false);
         setEditingIndId(null);
-        setNewInd({ level: 'Output', title: '', baseline: { general: 0, male: 0, female: 0, total: 0 }, target: { general: 100, male: 50, female: 50, total: 100 }, unit: 'Units', mapping: { generalFieldId: '', maleFieldId: '', femaleFieldId: '' }, calcType: 'SUM' });
+        setNewInd({ level: 'Output', title: '', baseline: { general: 0, male: 0, female: 0, total: 0 }, target: { general: 100, male: 50, female: 50, total: 100 }, unit: 'Units', customUnit: '', mapping: { generalFieldId: '', maleFieldId: '', femaleFieldId: '' }, calcType: 'SUM' });
       };
 
       const handleEditClick = (ind) => {
+        const existingUnit = ind.unit || 'Units';
+        const isCustom = !STANDARD_UNITS.includes(existingUnit);
         setEditingIndId(ind.id);
         setNewInd({
           level: ind.level || 'Output',
           title: ind.title || '',
           baseline: ind.baseline || { general: 0, male: 0, female: 0, total: 0 },
           target: ind.target || { general: 100, male: 50, female: 50, total: 100 },
-          unit: ind.unit || 'Units',
+          unit: isCustom ? 'CUSTOM' : existingUnit,
+          customUnit: isCustom ? existingUnit : '',
           mapping: ind.mapping || { generalFieldId: ind.mappedFieldId || '', maleFieldId: '', femaleFieldId: '' },
           calcType: ind.calcType || 'SUM'
         });
@@ -1542,7 +1555,7 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
                 type="button"
                 onClick={() => { 
                   setEditingIndId(null); 
-                  setNewInd({ level: 'Output', title: '', baseline: { general: 0, male: 0, female: 0, total: 0 }, target: { general: 100, male: 50, female: 50, total: 100 }, unit: 'Units', mapping: { generalFieldId: '', maleFieldId: '', femaleFieldId: '' }, calcType: 'SUM' }); 
+                  setNewInd({ level: 'Output', title: '', baseline: { general: 0, male: 0, female: 0, total: 0 }, target: { general: 100, male: 50, female: 50, total: 100 }, unit: 'Units', customUnit: '', mapping: { generalFieldId: '', maleFieldId: '', femaleFieldId: '' }, calcType: 'SUM' }); 
                   setShowAddModal(true); 
                 }} 
                 className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-extrabold text-base flex items-center gap-2 shadow cursor-pointer transition"
@@ -1674,13 +1687,13 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
 
           {showAddModal && (
             <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-              <div className="bg-white rounded-2xl shadow-2xl border max-w-lg w-full p-6 space-y-4">
+              <div className="bg-white rounded-2xl shadow-2xl border max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
                 <div className="flex justify-between items-center border-b pb-3">
                   <h3 className="text-xl font-extrabold text-slate-900">{editingIndId ? 'Edit Logframe Indicator' : 'Add Logframe Indicator & Formula'}</h3>
                   <button type="button" onClick={() => setShowAddModal(false)} className="text-slate-400 font-bold">✕</button>
                 </div>
                 <div className="space-y-4 text-base">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-1">Level</label>
                       <select value={newInd.level} onChange={(e) => setNewInd({...newInd, level: e.target.value})} className="w-full border rounded-xl p-3 font-bold bg-white">
@@ -1691,7 +1704,32 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1">Calculation Formula</label>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Unit Type</label>
+                      <select 
+                        value={newInd.unit} 
+                        onChange={(e) => {
+                          const selectedUnit = e.target.value;
+                          setNewInd({
+                            ...newInd, 
+                            unit: selectedUnit,
+                            calcType: selectedUnit === '%' ? 'PERCENTAGE' : newInd.calcType
+                          });
+                        }} 
+                        className="w-full border rounded-xl p-3 font-bold bg-white"
+                      >
+                        <option value="Units">Number / Units</option>
+                        <option value="%">Percentage (%)</option>
+                        <option value="People">People</option>
+                        <option value="Households">Households</option>
+                        <option value="Water Points">Water Points</option>
+                        <option value="Trainings">Trainings</option>
+                        <option value="USD">Currency (USD)</option>
+                        <option value="TZS">Currency (TZS)</option>
+                        <option value="CUSTOM">Other (Custom...)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Formula</label>
                       <select value={newInd.calcType} onChange={(e) => setNewInd({...newInd, calcType: e.target.value})} className="w-full border rounded-xl p-3 font-bold bg-white">
                         <option value="SUM">SUM (Total Count)</option>
                         <option value="COUNT">COUNT (Entries)</option>
@@ -1700,6 +1738,20 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
                       </select>
                     </div>
                   </div>
+
+                  {newInd.unit === 'CUSTOM' && (
+                    <div>
+                      <label className="block text-xs font-extrabold uppercase text-indigo-700 mb-1">Custom Measurement Unit *</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. Kilometers, Schools, Boreholes" 
+                        value={newInd.customUnit || ''} 
+                        onChange={(e) => setNewInd({...newInd, customUnit: e.target.value})} 
+                        className="w-full border border-indigo-300 bg-indigo-50/40 rounded-xl p-2.5 font-bold" 
+                      />
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-1">Indicator Statement *</label>
                     <textarea rows="2" placeholder="e.g. Number of community members trained" value={newInd.title} onChange={(e) => setNewInd({...newInd, title: e.target.value})} className="w-full border rounded-xl p-3 font-bold" />
