@@ -1895,7 +1895,7 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
       const [formTitle, setFormTitle] = useState('');
       const [formDesc, setFormDesc] = useState('');
       const [fields, setFields] = useState([
-        { id: 'field-1', label: 'Beneficiary Full Name', type: 'text', required: true, options: [], skipLogic: '' }
+        { id: 'field-1', label: 'Beneficiary Full Name', type: 'text', required: true, options: [], skipLogic: {} }
       ]);
 
       const QUESTION_TYPES = [
@@ -1911,8 +1911,10 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
       ];
 
       const handleAddField = (type) => {
-        const needsOptions = type === 'select' || type === 'checkbox' || type === 'rating';
-        const defaultOptions = type === 'rating' ? ['1', '2', '3', '4', '5'] : ['Option 1', 'Option 2'];
+        const needsOptions = type === 'select' || type === 'checkbox' || type === 'rating' || type === 'boolean';
+        let defaultOptions = ['Option 1', 'Option 2'];
+        if (type === 'rating') defaultOptions = ['1', '2', '3', '4', '5'];
+        if (type === 'boolean') defaultOptions = ['Yes', 'No'];
         
         setFields([
           ...fields, 
@@ -1922,7 +1924,7 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
             type, 
             required: true, 
             options: needsOptions ? defaultOptions : [], 
-            skipLogic: '' 
+            skipLogic: {} // Map: { "Option Value": "targetFieldId" }
           }
         ]);
       };
@@ -1939,14 +1941,14 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
         setEditingFormId(null);
         setFormTitle('');
         setFormDesc('');
-        setFields([{ id: 'field-1', label: 'Beneficiary Full Name', type: 'text', required: true, options: [], skipLogic: '' }]);
+        setFields([{ id: 'field-1', label: 'Beneficiary Full Name', type: 'text', required: true, options: [], skipLogic: {} }]);
       };
 
       const handleEditExistingForm = (form) => {
         setEditingFormId(form.id);
         setFormTitle(form.title);
         setFormDesc(form.description || '');
-        setFields(form.fields && form.fields.length > 0 ? form.fields : [{ id: 'field-1', label: '', type: 'text', required: true, options: [], skipLogic: '' }]);
+        setFields(form.fields && form.fields.length > 0 ? form.fields.map(f => ({ ...f, skipLogic: f.skipLogic || {} })) : [{ id: 'field-1', label: '', type: 'text', required: true, options: [], skipLogic: {} }]);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       };
 
@@ -1996,7 +1998,7 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center">
             <div>
               <h2 className="text-2xl font-black text-slate-900">Advanced Form Generator &amp; Skip Logic</h2>
-              <p className="text-base text-slate-600 mt-1">Design extensible questionnaires with 9 question types and conditional skip logic for {project.name}.</p>
+              <p className="text-base text-slate-600 mt-1">Design extensible questionnaires with option-level conditional skip logic for {project.name}.</p>
             </div>
             {editingFormId && (
               <button onClick={resetBuilder} className="px-4 py-2 bg-amber-100 text-amber-900 border border-amber-300 font-extrabold rounded-xl text-sm">
@@ -2075,22 +2077,22 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
                     </button>
                   </div>
 
-                  {/* CHOICES CONFIGURATION FOR SELECT, CHECKBOX, AND RATING */}
-                  {(field.type === 'select' || field.type === 'checkbox' || field.type === 'rating') && (
-                    <div className="flex gap-2 items-center text-sm pl-6 bg-white p-3 rounded-lg border border-slate-200">
-                      <label className="font-bold text-slate-600 text-xs uppercase">
-                        {field.type === 'rating' ? 'Rating Scale Options:' : 'Choices (comma-separated):'}
+                  {/* CHOICES CONFIGURATION FOR SELECT, CHECKBOX, RATING, BOOLEAN */}
+                  {(['select', 'checkbox', 'rating', 'boolean'].includes(field.type)) && (
+                    <div className="space-y-2 text-sm pl-6 bg-white p-3 rounded-lg border border-slate-200">
+                      <label className="block font-bold text-slate-600 text-xs uppercase">
+                        {field.type === 'rating' ? 'Rating Scale Options (comma-separated):' : 'Choices / Options (comma-separated):'}
                       </label>
                       <input 
                         type="text" 
-                        placeholder={field.type === 'rating' ? "1, 2, 3, 4, 5" : "Option 1, Option 2, Option 3"} 
+                        placeholder={field.type === 'rating' ? "1, 2, 3, 4, 5" : field.type === 'boolean' ? "Yes, No" : "Option 1, Option 2, Option 3"} 
                         value={(field.options || []).join(', ')} 
                         onChange={(e) => {
                           const updated = [...fields];
                           updated[idx].options = e.target.value.split(',').map(o => o.trim());
                           setFields(updated);
                         }} 
-                        className="flex-1 border rounded-lg p-2 font-bold bg-slate-50 text-xs" 
+                        className="w-full border rounded-lg p-2 font-bold bg-slate-50 text-xs" 
                       />
                     </div>
                   )}
@@ -2102,29 +2104,44 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
                     </div>
                   )}
 
-                  {/* SELECT-BASED SKIP LOGIC */}
-                  <div className="flex gap-2 items-center text-sm pl-6">
-                    <label className="font-bold text-slate-600 text-xs uppercase">Skip Logic:</label>
-                    <select
-                      value={field.skipLogic || ''}
-                      onChange={(e) => {
-                        const updated = [...fields];
-                        updated[idx].skipLogic = e.target.value;
-                        setFields(updated);
-                      }}
-                      className="flex-1 text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg p-2 outline-none cursor-pointer"
-                    >
-                      <option value="">Normal (No Skip)</option>
-                      {fields.map((targetField, tIdx) => {
-                        if (tIdx <= idx) return null;
-                        return (
-                          <option key={targetField.id} value={`Q${tIdx + 1}`}>
-                            Skip to Q{tIdx + 1} ({targetField.label || `Question ${tIdx + 1}`})
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
+                  {/* OPTION-LEVEL SKIP LOGIC CONFIGURATION */}
+                  {(['select', 'checkbox', 'boolean', 'rating'].includes(field.type)) && (field.options || []).length > 0 && (
+                    <div className="space-y-2 pl-6 bg-indigo-50/50 p-3 rounded-lg border border-indigo-100">
+                      <p className="text-xs font-extrabold uppercase text-indigo-900 tracking-wide">Option-Level Skip Logic Rules:</p>
+                      <div className="space-y-2">
+                        {(field.options || []).map((opt, oIdx) => (
+                          <div key={oIdx} className="flex flex-wrap items-center gap-2 bg-white p-2 rounded-lg border border-indigo-200 text-xs">
+                            <span className="font-bold text-slate-700 bg-slate-100 px-2 py-1 rounded">If selected "{opt}"</span>
+                            <span className="text-slate-400">➔ Skip to:</span>
+                            <select
+                              value={(field.skipLogic && field.skipLogic[opt]) || ''}
+                              onChange={(e) => {
+                                const updated = [...fields];
+                                if (!updated[idx].skipLogic) updated[idx].skipLogic = {};
+                                if (e.target.value) {
+                                  updated[idx].skipLogic[opt] = e.target.value;
+                                } else {
+                                  delete updated[idx].skipLogic[opt];
+                                }
+                                setFields(updated);
+                              }}
+                              className="font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded p-1.5 outline-none cursor-pointer flex-1 min-w-[150px]"
+                            >
+                              <option value="">-- Continue to Next Question (Normal) --</option>
+                              {fields.map((targetField, tIdx) => {
+                                if (tIdx <= idx) return null; // Can only skip forward
+                                return (
+                                  <option key={targetField.id} value={targetField.id}>
+                                    Q{tIdx + 1}: {targetField.label || `Question ${tIdx + 1}`}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
               
