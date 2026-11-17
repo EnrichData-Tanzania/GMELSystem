@@ -1478,389 +1478,126 @@ function DashboardView({ project, getCalculatedActual, onOpenEditProject, setPro
         </div>
       );
     }
-   function LogframeView({ project, getCalculatedActual, setProjects, userRole }) {
-      const [showAddModal, setShowAddModal] = useState(false);
-      const [editingIndId, setEditingIndId] = useState(null);
-      const [newInd, setNewInd] = useState({ 
-        level: 'Output', 
-        title: '', 
-        baseline: { general: 0, male: 0, female: 0, total: 0 },
-        target: { general: 100, male: 50, female: 50, total: 100 },
-        unit: 'Units',
-        customUnit: '',
-        mapping: { generalFieldId: '', maleFieldId: '', femaleFieldId: '' },
-        calcType: 'SUM'
-      });
+   // Ensure all state hooks and helper variables are safely contained within your main App or view components:
 
-      const STANDARD_UNITS = ['Units', '%', 'People', 'Households', 'Water Points', 'Trainings', 'USD', 'TZS'];
+function LogframeView({ project, getCalculatedActual, setProjects, userRole }) {
+  const [showAddModal, setShowAddModal] = React.useState(false);
+  const [editingIndId, setEditingIndId] = React.useState(null);
+  const [newInd, setNewInd] = React.useState({ 
+    level: 'Output', 
+    title: '', 
+    baseline: { general: 0, male: 0, female: 0, total: 0 },
+    target: { general: 100, male: 50, female: 50, total: 100 },
+    unit: 'Units',
+    customUnit: '',
+    mapping: { generalFieldId: '', maleFieldId: '', femaleFieldId: '' },
+    calcType: 'SUM'
+  });
 
-      const handleSaveIndicator = () => {
-        if (!newInd.title.trim()) return;
+  const STANDARD_UNITS = ['Units', '%', 'People', 'Households', 'Water Points', 'Trainings', 'USD', 'TZS'];
 
-        // Automatically sum up disaggregated values for baseline and target
-        const baseGen = Number(newInd.baseline.general) || 0;
-        const baseMale = Number(newInd.baseline.male) || 0;
-        const baseFemale = Number(newInd.baseline.female) || 0;
-        const baseTotal = (baseMale > 0 || baseFemale > 0) ? (baseMale + baseFemale) : baseGen;
+  const handleSaveIndicator = () => {
+    if (!newInd.title.trim()) return;
 
-        const targetGen = Number(newInd.target.general) || 0;
-        const targetMale = Number(newInd.target.male) || 0;
-        const targetFemale = Number(newInd.target.female) || 0;
-        const targetTotal = (targetMale > 0 || targetFemale > 0) ? (targetMale + targetFemale) : targetGen;
+    const baseGen = Number(newInd.baseline.general) || 0;
+    const baseMale = Number(newInd.baseline.male) || 0;
+    const baseFemale = Number(newInd.baseline.female) || 0;
+    const baseTotal = (baseMale > 0 || baseFemale > 0) ? (baseMale + baseFemale) : baseGen;
 
-        const resolvedUnit = newInd.unit === 'CUSTOM' 
-          ? (newInd.customUnit?.trim() || 'Units') 
-          : (newInd.unit || 'Units');
+    const targetGen = Number(newInd.target.general) || 0;
+    const targetMale = Number(newInd.target.male) || 0;
+    const targetFemale = Number(newInd.target.female) || 0;
+    const targetTotal = (targetMale > 0 || targetFemale > 0) ? (targetMale + targetFemale) : targetGen;
 
-        const { customUnit, ...restInd } = newInd;
+    const resolvedUnit = newInd.unit === 'CUSTOM' 
+      ? (newInd.customUnit?.trim() || 'Units') 
+      : (newInd.unit || 'Units');
 
-        const indicatorPayload = {
-          ...restInd,
-          unit: resolvedUnit,
-          baseline: { general: baseGen, male: baseMale, female: baseFemale, total: baseTotal },
-          target: { general: targetGen, male: targetMale, female: targetFemale, total: targetTotal }
-        };
+    const { customUnit, ...restInd } = newInd;
 
-        if (editingIndId) {
-          setProjects(prev => prev.map(p => p.id !== project.id ? p : {
-            ...p,
-            indicators: p.indicators.map(ind => ind.id === editingIndId ? { ...indicatorPayload, id: editingIndId } : ind)
-          }));
-        } else {
-          const indicatorObj = { 
-            ...indicatorPayload,
-            id: createId('ind')
-          };
-          setProjects(prev => prev.map(p => p.id !== project.id ? p : { ...p, indicators: [...p.indicators, indicatorObj] }));
-        }
+    const indicatorPayload = {
+      ...restInd,
+      unit: resolvedUnit,
+      baseline: { general: baseGen, male: baseMale, female: baseFemale, total: baseTotal },
+      target: { general: targetGen, male: targetMale, female: targetFemale, total: targetTotal }
+    };
 
-        setShowAddModal(false);
-        setEditingIndId(null);
-        setNewInd({ level: 'Output', title: '', baseline: { general: 0, male: 0, female: 0, total: 0 }, target: { general: 100, male: 50, female: 50, total: 100 }, unit: 'Units', customUnit: '', mapping: { generalFieldId: '', maleFieldId: '', femaleFieldId: '' }, calcType: 'SUM' });
+    if (editingIndId) {
+      setProjects(prev => prev.map(p => p.id !== project.id ? p : {
+        ...p,
+        indicators: p.indicators.map(ind => ind.id === editingIndId ? { ...indicatorPayload, id: editingIndId } : ind)
+      }));
+    } else {
+      const indicatorObj = { 
+        ...indicatorPayload,
+        id: 'ind_' + Math.random().toString(36.substr(2, 9))
       };
-
-      const handleEditClick = (ind) => {
-        const existingUnit = ind.unit || 'Units';
-        const isCustom = !STANDARD_UNITS.includes(existingUnit);
-        setEditingIndId(ind.id);
-        setNewInd({
-          level: ind.level || 'Output',
-          title: ind.title || '',
-          baseline: ind.baseline || { general: 0, male: 0, female: 0, total: 0 },
-          target: ind.target || { general: 100, male: 50, female: 50, total: 100 },
-          unit: isCustom ? 'CUSTOM' : existingUnit,
-          customUnit: isCustom ? existingUnit : '',
-          mapping: ind.mapping || { generalFieldId: ind.mappedFieldId || '', maleFieldId: '', femaleFieldId: '' },
-          calcType: ind.calcType || 'SUM'
-        });
-        setShowAddModal(true);
-      };
-
-      const handleDeleteIndicator = (indId) => {
-        if (!window.confirm('Are you sure you want to delete this indicator?')) return;
-        setProjects(prev => prev.map(p => p.id !== project.id ? p : {
-          ...p,
-          indicators: p.indicators.filter(i => i.id !== indId)
-        }));
-      };
-
-      const handleUpdateMapping = (indId, mappingKey, fieldId) => {
-        setProjects(prev => prev.map(p => p.id !== project.id ? p : {
-          ...p,
-          indicators: p.indicators.map(ind => {
-            if (ind.id !== indId) return ind;
-            const currentMapping = ind.mapping || { generalFieldId: ind.mappedFieldId, maleFieldId: '', femaleFieldId: '' };
-            return {
-              ...ind,
-              mapping: { ...currentMapping, [mappingKey]: fieldId }
-            };
-          })
-        }));
-      };
-
-      const handleUpdateCalcType = (indId, calcType) => {
-        setProjects(prev => prev.map(p => p.id !== project.id ? p : {
-          ...p,
-          indicators: p.indicators.map(ind => ind.id === indId ? { ...ind, calcType } : ind)
-        }));
-      };
-
-      return (
-        <div className="space-y-6 text-base">
-          <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <div>
-              <h2 className="text-2xl font-black text-slate-900">Logical Framework (Logframe) Matrix &amp; Formulas</h2>
-              <p className="text-base text-slate-600 mt-1">Disaggregated indicator tracking with customizable source form mappings.</p>
-            </div>
-            {userRole !== 'Enumerator' && (
-              <button 
-                type="button"
-                onClick={() => { 
-                  setEditingIndId(null); 
-                  setNewInd({ level: 'Output', title: '', baseline: { general: 0, male: 0, female: 0, total: 0 }, target: { general: 100, male: 50, female: 50, total: 100 }, unit: 'Units', customUnit: '', mapping: { generalFieldId: '', maleFieldId: '', femaleFieldId: '' }, calcType: 'SUM' }); 
-                  setShowAddModal(true); 
-                }} 
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-extrabold text-base flex items-center gap-2 shadow cursor-pointer transition"
-              >
-                <PlusCircle className="h-5 w-5" /> Add Indicator
-              </button>
-            )}
-          </div>
-
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[1250px]">
-              <thead>
-                <tr className="bg-slate-100 text-slate-800 text-xs uppercase font-extrabold border-b">
-                  <th className="p-4">Level</th>
-                  <th className="p-4">Indicator Statement</th>
-                  <th className="p-4 text-center">Baseline (Gen / M / F / Tot)</th>
-                  <th className="p-4 text-center">Target (Gen / M / F / Tot)</th>
-                  <th className="p-4 text-center">Actual Achieved (Gen / M / F / Tot)</th>
-                  <th className="p-4">Source Form &amp; Formula Mapping</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 text-base">
-                {project.indicators.map((ind) => {
-                  const actual = getCalculatedActual(project, ind);
-                  const b = ind.baseline || { general: 0, male: 0, female: 0, total: 0 };
-                  const t = ind.target || { general: 0, male: 0, female: 0, total: 0 };
-
-                  return (
-                    <tr key={ind.id} className="hover:bg-slate-50 font-bold">
-                      <td className="p-4 align-top"><span className="px-3 py-1 rounded-lg text-sm font-extrabold border bg-indigo-50 text-indigo-900 border-indigo-200">{ind.level}</span></td>
-                      <td className="p-4 text-slate-900 align-top max-w-xs">{ind.title}</td>
-                      <td className="p-4 text-center font-mono text-sm text-slate-600 align-top">
-                        {b.general} / {b.male} / {b.female} / <strong className="text-slate-900">{b.total}</strong> {ind.unit}
-                      </td>
-                      <td className="p-4 text-center font-mono text-sm text-slate-800 align-top">
-                        {t.general} / {t.male} / {t.female} / <strong className="text-slate-900">{t.total}</strong> {ind.unit}
-                      </td>
-                      <td className="p-4 text-center font-mono text-sm text-indigo-900 align-top font-black">
-                        {actual.general} / {actual.male} / {actual.female} / <strong className="text-indigo-950">{actual.total}</strong> {ind.unit}
-                      </td>
-                      <td className="p-4 align-top">
-                        <div className="space-y-2 text-xs">
-                          <div>
-                            <span className="font-bold text-slate-500 block mb-0.5">General / Total Field:</span>
-                            <select 
-                              value={ind.mapping?.generalFieldId || ind.mappedFieldId || ''} 
-                              onChange={(e) => handleUpdateMapping(ind.id, 'generalFieldId', e.target.value)}
-                              className="w-full border rounded-lg p-1.5 font-bold bg-white text-slate-800"
-                            >
-                              <option value="">-- Select Form Field --</option>
-                              {project.forms.map(f => (
-                                <optgroup key={f.id} label={f.title}>
-                                  {f.fields.map(field => (
-                                    <option key={field.id} value={field.id}>{f.title} › {field.label}</option>
-                                  ))}
-                                </optgroup>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-1.5">
-                            <div>
-                              <span className="font-bold text-slate-500 block mb-0.5">Male Field:</span>
-                              <select 
-                                value={ind.mapping?.maleFieldId || ''} 
-                                onChange={(e) => handleUpdateMapping(ind.id, 'maleFieldId', e.target.value)}
-                                className="w-full border rounded-lg p-1 font-bold bg-white text-slate-800"
-                              >
-                                <option value="">-- None --</option>
-                                {project.forms.map(f => (
-                                  <optgroup key={f.id} label={f.title}>
-                                    {f.fields.map(field => (
-                                      <option key={field.id} value={field.id}>{field.label}</option>
-                                    ))}
-                                  </optgroup>
-                                ))}
-                              </select>
-                            </div>
-
-                            <div>
-                              <span className="font-bold text-slate-500 block mb-0.5">Female Field:</span>
-                              <select 
-                                value={ind.mapping?.femaleFieldId || ''} 
-                                onChange={(e) => handleUpdateMapping(ind.id, 'femaleFieldId', e.target.value)}
-                                className="w-full border rounded-lg p-1 font-bold bg-white text-slate-800"
-                              >
-                                <option value="">-- None --</option>
-                                {project.forms.map(f => (
-                                  <optgroup key={f.id} label={f.title}>
-                                    {f.fields.map(field => (
-                                      <option key={field.id} value={field.id}>{field.label}</option>
-                                    ))}
-                                  </optgroup>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
-
-                          <div className="flex gap-2 items-center pt-1">
-                            <select 
-                              value={ind.calcType || 'SUM'} 
-                              onChange={(e) => handleUpdateCalcType(ind.id, e.target.value)}
-                              className="text-xs border rounded-lg p-1.5 font-bold bg-indigo-50 text-indigo-900 border-indigo-200"
-                            >
-                              <option value="SUM">SUM</option>
-                              <option value="COUNT">COUNT</option>
-                              <option value="AVERAGE">AVERAGE</option>
-                              <option value="PERCENTAGE">PERCENTAGE</option>
-                            </select>
-                            {userRole !== 'Enumerator' && (
-                              <div className="flex items-center gap-1 ml-auto">
-                                <button type="button" onClick={() => handleEditClick(ind)} className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg border text-xs" title="Edit Indicator">
-                                  <Edit2 className="h-4 w-4" />
-                                </button>
-                                <button type="button" onClick={() => handleDeleteIndicator(ind.id)} className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg border border-red-200 text-xs" title="Delete Indicator">
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {showAddModal && (
-            <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-              <div className="bg-white rounded-2xl shadow-2xl border max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-                <div className="flex justify-between items-center border-b pb-3">
-                  <h3 className="text-xl font-extrabold text-slate-900">{editingIndId ? 'Edit Logframe Indicator' : 'Add Logframe Indicator & Formula'}</h3>
-                  <button type="button" onClick={() => setShowAddModal(false)} className="text-slate-400 font-bold">✕</button>
-                </div>
-                <div className="space-y-4 text-base">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1">Level</label>
-                      <select value={newInd.level} onChange={(e) => setNewInd({...newInd, level: e.target.value})} className="w-full border rounded-xl p-3 font-bold bg-white">
-                        <option value="Impact">Impact</option>
-                        <option value="Outcome">Outcome</option>
-                        <option value="Output">Output</option>
-                        <option value="Activity">Activity</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1">Unit Type</label>
-                      <select 
-                        value={newInd.unit} 
-                        onChange={(e) => {
-                          const selectedUnit = e.target.value;
-                          setNewInd({
-                            ...newInd, 
-                            unit: selectedUnit,
-                            calcType: selectedUnit === '%' ? 'PERCENTAGE' : newInd.calcType
-                          });
-                        }} 
-                        className="w-full border rounded-xl p-3 font-bold bg-white"
-                      >
-                        <option value="Units">Number / Units</option>
-                        <option value="%">Percentage (%)</option>
-                        <option value="People">People</option>
-                        <option value="Households">Households</option>
-                        <option value="Water Points">Water Points</option>
-                        <option value="Trainings">Trainings</option>
-                        <option value="USD">Currency (USD)</option>
-                        <option value="TZS">Currency (TZS)</option>
-                        <option value="CUSTOM">Other (Custom...)</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1">Formula</label>
-                      <select value={newInd.calcType} onChange={(e) => setNewInd({...newInd, calcType: e.target.value})} className="w-full border rounded-xl p-3 font-bold bg-white">
-                        <option value="SUM">SUM (Total Count)</option>
-                        <option value="COUNT">COUNT (Entries)</option>
-                        <option value="AVERAGE">AVERAGE (Mean)</option>
-                        <option value="PERCENTAGE">PERCENTAGE (%)</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {newInd.unit === 'CUSTOM' && (
-                    <div>
-                      <label className="block text-xs font-extrabold uppercase text-indigo-700 mb-1">Custom Measurement Unit *</label>
-                      <input 
-                        type="text" 
-                        placeholder="e.g. Kilometers, Schools, Boreholes" 
-                        value={newInd.customUnit || ''} 
-                        onChange={(e) => setNewInd({...newInd, customUnit: e.target.value})} 
-                        className="w-full border border-indigo-300 bg-indigo-50/40 rounded-xl p-2.5 font-bold" 
-                      />
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1">Indicator Statement *</label>
-                    <textarea rows="2" placeholder="e.g. Number of community members trained" value={newInd.title} onChange={(e) => setNewInd({...newInd, title: e.target.value})} className="w-full border rounded-xl p-3 font-bold" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1">Link to Source Form Field</label>
-                    <select value={newInd.mapping.generalFieldId || newInd.mappedFieldId} onChange={(e) => setNewInd({...newInd, mapping: {...newInd.mapping, generalFieldId: e.target.value}})} className="w-full border rounded-xl p-3 font-bold bg-white">
-                      <option value="">-- Optional: Map to Form Question --</option>
-                      {project.forms.map(f => (
-                        <optgroup key={f.id} label={f.title}>
-                          {f.fields.map(field => (
-                            <option key={field.id} value={field.id}>{f.title} › {field.label}</option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* DISAGGREGATED BASELINE INPUT BOXES */}
-                  <div>
-                    <label className="block text-xs font-extrabold uppercase text-slate-600 mb-1.5">Baseline (Gen / Male / Female)</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1">General</label>
-                        <input type="number" value={newInd.baseline.general} onChange={(e) => setNewInd({...newInd, baseline: {...newInd.baseline, general: Number(e.target.value)}})} className="w-full border rounded-xl p-2.5 font-mono font-bold" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1">Male</label>
-                        <input type="number" value={newInd.baseline.male} onChange={(e) => setNewInd({...newInd, baseline: {...newInd.baseline, male: Number(e.target.value)}})} className="w-full border rounded-xl p-2.5 font-mono font-bold" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1">Female</label>
-                        <input type="number" value={newInd.baseline.female} onChange={(e) => setNewInd({...newInd, baseline: {...newInd.baseline, female: Number(e.target.value)}})} className="w-full border rounded-xl p-2.5 font-mono font-bold" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* DISAGGREGATED TARGET INPUT BOXES */}
-                  <div>
-                    <label className="block text-xs font-extrabold uppercase text-slate-600 mb-1.5">Target (Gen / Male / Female)</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1">General</label>
-                        <input type="number" value={newInd.target.general} onChange={(e) => setNewInd({...newInd, target: {...newInd.target, general: Number(e.target.value)}})} className="w-full border rounded-xl p-2.5 font-mono font-bold" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1">Male</label>
-                        <input type="number" value={newInd.target.male} onChange={(e) => setNewInd({...newInd, target: {...newInd.target, male: Number(e.target.value)}})} className="w-full border rounded-xl p-2.5 font-mono font-bold" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1">Female</label>
-                        <input type="number" value={newInd.target.female} onChange={(e) => setNewInd({...newInd, target: {...newInd.target, female: Number(e.target.value)}})} className="w-full border rounded-xl p-2.5 font-mono font-bold" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end gap-3 pt-4 border-t">
-                    <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2.5 border rounded-xl font-bold">Cancel</button>
-                    <button type="button" onClick={handleSaveIndicator} className="px-5 py-2.5 bg-indigo-600 text-white font-extrabold rounded-xl">Save Indicator</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      );
+      setProjects(prev => prev.map(p => p.id !== project.id ? p : { ...p, indicators: [...p.indicators, indicatorObj] }));
     }
+
+    setShowAddModal(false);
+    setEditingIndId(null);
+    setNewInd({ 
+      level: 'Output', 
+      title: '', 
+      baseline: { general: 0, male: 0, female: 0, total: 0 }, 
+      target: { general: 100, male: 50, female: 50, total: 100 }, 
+      unit: 'Units', 
+      customUnit: '', 
+      mapping: { generalFieldId: '', maleFieldId: '', femaleFieldId: '' }, 
+      calcType: 'SUM' 
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-bold text-gray-800">Logframe & Indicators</h3>
+        {userRole !== 'Viewer' && (
+          <button 
+            onClick={() => setShowAddModal(true)} 
+            className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700">
+            + Add Indicator
+          </button>
+        )}
+      </div>
+      
+      {/* Indicator mapping table or cards go here */}
+      
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 space-y-4">
+            <h4 className="text-md font-bold text-gray-900">{editingIndId ? 'Edit Indicator' : 'New Indicator'}</h4>
+            
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">Indicator Title</label>
+              <input 
+                type="text" 
+                value={newInd.title} 
+                onChange={e => setNewInd({...newInd, title: e.target.value})}
+                className="w-full border rounded-lg px-3 py-2 text-sm"
+                placeholder="Enter indicator description..."
+              />
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-4">
+              <button 
+                onClick={() => setShowAddModal(false)}
+                className="px-4 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+                Cancel
+              </button>
+              <button 
+                onClick={handleSaveIndicator}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
+                Save Indicator
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
     function CustomReportsView({ project, getCalculatedActual }) {
       const totalExpenses = (project.expenses || []).reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
       const rawBudgetNum = parseFloat(String(project.budget || '0').replace(/[^0-9.]/g, '')) || 1;
